@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hill Number — Top 100 Artists</title>
+<style>
+  :root {
+    --bg: #12141a;
+    --panel: #1b1f29;
+    --text: #e7e9ee;
+    --muted: #8b93a7;
+    --grid: #2a2f3b;
+    --accent: #6ee7b7;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 32px;
+  }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 28px; }
+  .stats-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+  }
+  .stat {
+    background: var(--panel);
+    border: 1px solid var(--grid);
+    border-radius: 10px;
+    padding: 12px 16px;
+    min-width: 140px;
+  }
+  .stat .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .stat .value { font-size: 20px; font-weight: 600; margin-top: 2px; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--grid);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 28px;
+  }
+  .panel h2 { font-size: 15px; margin: 0 0 4px; }
+  .panel .desc { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+  #scatter-wrap { overflow-x: auto; }
+  .tooltip {
+    position: fixed;
+    pointer-events: none;
+    background: #0d0f14;
+    border: 1px solid var(--grid);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text);
+    display: none;
+    z-index: 10;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  }
+  .tooltip b { color: var(--accent); }
+  .bar-row {
+    display: flex;
+    align-items: center;
+    height: 15px;
+    margin-bottom: 2px;
+    font-size: 11px;
+  }
+  .bar-name {
+    width: 150px;
+    flex-shrink: 0;
+    text-align: right;
+    padding-right: 8px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .bar-track {
+    flex: 1;
+    height: 10px;
+    background: #10131a;
+    border-radius: 3px;
+    position: relative;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 3px;
+  }
+  .bar-val {
+    width: 42px;
+    flex-shrink: 0;
+    padding-left: 8px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .bar-row.highlight .bar-name { color: var(--text); font-weight: 600; }
+  .legend { display: flex; gap: 18px; font-size: 11px; color: var(--muted); margin-top: 10px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  footer { color: var(--muted); font-size: 11px; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<h1>Within-Artist Listening Concentration</h1>
+<div class="subtitle">Hill Number (effective items) across your top 100 Last.fm artists — track level, 20 candidates each</div>
+
+<div class="stats-row" id="stats"></div>
+
+<div class="panel">
+  <h2>Plays vs. Spread</h2>
+  <div class="desc">Each dot is an artist. X = total plays fetched, Y = normalized Hill Number (0 = concentrated on a few tracks, 1 = evenly spread). Dashed line is the linear trend.</div>
+  <div id="scatter-wrap"><svg id="scatter"></svg></div>
+  <div class="legend">
+    <span><span class="swatch" style="background:#ef4444"></span> concentrated (&lt; 0.3)</span>
+    <span><span class="swatch" style="background:#f59e0b"></span> moderate (0.3–0.6)</span>
+    <span><span class="swatch" style="background:#22c55e"></span> spread (&gt; 0.6)</span>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Full Ranking</h2>
+  <div class="desc">All 92 artists, sorted from most concentrated (top) to most spread (bottom).</div>
+  <div id="bars"></div>
+</div>
+
+<footer>Israeli/Hebrew-named artists were excluded due to Last.fm track-matching issues. n = 92 of 100 fetched.</footer>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+const DATA = [{"artist": "Taylor Swift", "effective_items": 14.13459549505381, "normalized": 0.6912944997396743, "n_candidates": 20, "total_plays": 169}, {"artist": "Iron & Wine", "effective_items": 11.226521861905226, "normalized": 0.538237992731854, "n_candidates": 20, "total_plays": 200}, {"artist": "Florence + the Machine", "effective_items": 8.248218904090457, "normalized": 0.3814852054784451, "n_candidates": 20, "total_plays": 156}, {"artist": "Bon Iver", "effective_items": 12.49917337924035, "normalized": 0.6052196515389658, "n_candidates": 20, "total_plays": 225}, {"artist": "Simon & Garfunkel", "effective_items": 16.007212691263582, "normalized": 0.7898532995401886, "n_candidates": 20, "total_plays": 210}, {"artist": "Billie Eilish", "effective_items": 13.553521346833389, "normalized": 0.6607116498333362, "n_candidates": 20, "total_plays": 214}, {"artist": "Sufjan Stevens", "effective_items": 10.762745438034397, "normalized": 0.5138287072649682, "n_candidates": 20, "total_plays": 184}, {"artist": "Lorde", "effective_items": 13.028907900795986, "normalized": 0.6331004158313677, "n_candidates": 20, "total_plays": 244}, {"artist": "Aurora", "effective_items": 11.990535298085922, "normalized": 0.5784492262150485, "n_candidates": 20, "total_plays": 147}, {"artist": "Belle and Sebastian", "effective_items": 9.063278981549793, "normalized": 0.42438310429209436, "n_candidates": 20, "total_plays": 103}, {"artist": "Lana Del Rey", "effective_items": 13.078709361737666, "normalized": 0.635721545354614, "n_candidates": 20, "total_plays": 92}, {"artist": "Hozier", "effective_items": 10.106597954427492, "normalized": 0.47929462918039434, "n_candidates": 20, "total_plays": 202}, {"artist": "Dua Lipa", "effective_items": 10.459784995608008, "normalized": 0.4978834208214741, "n_candidates": 20, "total_plays": 163}, {"artist": "Caroline Polachek", "effective_items": 13.50620950163626, "normalized": 0.6582215527176979, "n_candidates": 20, "total_plays": 217}, {"artist": "Chappell Roan", "effective_items": 12.096179681911806, "normalized": 0.5840094569427267, "n_candidates": 20, "total_plays": 250}, {"artist": "Lizzy McAlpine", "effective_items": 11.334253168396872, "normalized": 0.5439080614945722, "n_candidates": 20, "total_plays": 174}, {"artist": "The Shins", "effective_items": 10.67435484809549, "normalized": 0.5091765709523942, "n_candidates": 20, "total_plays": 155}, {"artist": "Maggie Rogers", "effective_items": 10.360268310372268, "normalized": 0.49264570054590884, "n_candidates": 20, "total_plays": 161}, {"artist": "MUNA", "effective_items": 10.451021046552173, "normalized": 0.4974221603448512, "n_candidates": 20, "total_plays": 174}, {"artist": "HAIM", "effective_items": 13.54360111596598, "normalized": 0.6601895324192621, "n_candidates": 20, "total_plays": 125}, {"artist": "Death Cab for Cutie", "effective_items": 10.756233475117064, "normalized": 0.5134859723745823, "n_candidates": 20, "total_plays": 106}, {"artist": "Beck", "effective_items": 4.756828460010884, "normalized": 0.19772781368478337, "n_candidates": 20, "total_plays": 16}, {"artist": "Elton John", "effective_items": 10.918465851160656, "normalized": 0.5220245184821398, "n_candidates": 20, "total_plays": 167}, {"artist": "Leonard Cohen", "effective_items": 13.008337732599543, "normalized": 0.632017775399976, "n_candidates": 20, "total_plays": 141}, {"artist": "Miley Cyrus", "effective_items": 5.300091281973808, "normalized": 0.22632059378809516, "n_candidates": 20, "total_plays": 92}, {"artist": "Gigi Perez", "effective_items": 8.870839238293586, "normalized": 0.414254696752294, "n_candidates": 20, "total_plays": 179}, {"artist": "Lykke Li", "effective_items": 4.494865127520092, "normalized": 0.18394026986947853, "n_candidates": 20, "total_plays": 48}, {"artist": "Fleet Foxes", "effective_items": 9.168786431245033, "normalized": 0.4299361279602649, "n_candidates": 20, "total_plays": 135}, {"artist": "The Beaches", "effective_items": 12.990193823788353, "normalized": 0.631062832830966, "n_candidates": 20, "total_plays": 145}, {"artist": "The Beatles", "effective_items": 7.718293374369285, "normalized": 0.35359438812469923, "n_candidates": 20, "total_plays": 68}, {"artist": "King Princess", "effective_items": 8.984733528469025, "normalized": 0.4202491330773171, "n_candidates": 20, "total_plays": 129}, {"artist": "Miya Folick", "effective_items": 10.919776985046191, "normalized": 0.5220935255287469, "n_candidates": 20, "total_plays": 79}, {"artist": "Tomer Yeshayahu", "effective_items": 12.559591271472256, "normalized": 0.608399540603803, "n_candidates": 20, "total_plays": 116}, {"artist": "Jimbo J", "effective_items": 15.063918600160969, "normalized": 0.7402062421137352, "n_candidates": 20, "total_plays": 71}, {"artist": "First Aid Kit", "effective_items": 5.450399514909749, "normalized": 0.23423155341630256, "n_candidates": 20, "total_plays": 77}, {"artist": "Alma Gov", "effective_items": 11.14556313411976, "normalized": 0.5339770070589347, "n_candidates": 20, "total_plays": 98}, {"artist": "Jos\u00e9 Gonz\u00e1lez", "effective_items": 3.0293808670388844, "normalized": 0.10680951931783603, "n_candidates": 20, "total_plays": 92}, {"artist": "Radiohead", "effective_items": 15.846147426537582, "normalized": 0.7813761803440833, "n_candidates": 20, "total_plays": 86}, {"artist": "Bruno Mars", "effective_items": 17.80809848762447, "normalized": 0.8846367625065511, "n_candidates": 20, "total_plays": 126}, {"artist": "Assaf Amdursky", "effective_items": 14.216172119297065, "normalized": 0.6955880062787929, "n_candidates": 20, "total_plays": 93}, {"artist": "Laura Marling", "effective_items": 9.187015110628339, "normalized": 0.43089553213833365, "n_candidates": 20, "total_plays": 50}, {"artist": "Kacey Musgraves", "effective_items": 15.815803198331267, "normalized": 0.7797791157016456, "n_candidates": 20, "total_plays": 61}, {"artist": "NuNu", "effective_items": 10.90366655280049, "normalized": 0.521245608042131, "n_candidates": 20, "total_plays": 71}, {"artist": "Adele", "effective_items": 11.04487883093519, "normalized": 0.5286778332071153, "n_candidates": 20, "total_plays": 106}, {"artist": "Novo Amor", "effective_items": 8.654290217812749, "normalized": 0.4028573798848815, "n_candidates": 20, "total_plays": 96}, {"artist": "Olivia Dean", "effective_items": 11.53402140025296, "normalized": 0.5544221789606821, "n_candidates": 20, "total_plays": 136}, {"artist": "Remi Wolf", "effective_items": 8.715409554098361, "normalized": 0.40607418705780846, "n_candidates": 20, "total_plays": 112}, {"artist": "sombr", "effective_items": 8.050995839134742, "normalized": 0.37110504416498646, "n_candidates": 20, "total_plays": 138}, {"artist": "Paul Simon", "effective_items": 7.524210183031987, "normalized": 0.343379483317473, "n_candidates": 20, "total_plays": 67}, {"artist": "Real Estate", "effective_items": 6.493859170480958, "normalized": 0.2891504826568925, "n_candidates": 20, "total_plays": 98}, {"artist": "Sabrina Carpenter", "effective_items": 13.086035715101866, "normalized": 0.6361071429000983, "n_candidates": 20, "total_plays": 105}, {"artist": "MisterWives", "effective_items": 9.933143818257625, "normalized": 0.4701654641188224, "n_candidates": 20, "total_plays": 100}, {"artist": "The 1975", "effective_items": 12.554216249435099, "normalized": 0.6081166447071105, "n_candidates": 20, "total_plays": 55}, {"artist": "Mumford & Sons", "effective_items": 7.400029919387722, "normalized": 0.33684367996777487, "n_candidates": 20, "total_plays": 73}, {"artist": "Lord Huron", "effective_items": 9.70266347673657, "normalized": 0.4580349198282405, "n_candidates": 20, "total_plays": 112}, {"artist": "Phoebe Bridgers", "effective_items": 11.016502287612996, "normalized": 0.5271843309269998, "n_candidates": 20, "total_plays": 103}, {"artist": "Chloe Qisha", "effective_items": 9.194415489284497, "normalized": 0.4312850257518156, "n_candidates": 20, "total_plays": 130}, {"artist": "The Paper Kites", "effective_items": 6.5118493281416345, "normalized": 0.290097333060086, "n_candidates": 20, "total_plays": 91}, {"artist": "The Weeknd", "effective_items": 4.40257617475198, "normalized": 0.17908295656589368, "n_candidates": 20, "total_plays": 92}, {"artist": "Olivia Rodrigo", "effective_items": 14.835244246534575, "normalized": 0.7281707498176092, "n_candidates": 20, "total_plays": 68}, {"artist": "Nick Drake", "effective_items": 6.468068559856699, "normalized": 0.28779308209772103, "n_candidates": 20, "total_plays": 111}, {"artist": "Joshua Radin", "effective_items": 10.915468635029713, "normalized": 0.5218667702647217, "n_candidates": 20, "total_plays": 33}, {"artist": "Queen", "effective_items": 13.127885435088544, "normalized": 0.6383097597415023, "n_candidates": 20, "total_plays": 63}, {"artist": "Vampire Weekend", "effective_items": 4.457182720626583, "normalized": 0.18195698529613594, "n_candidates": 20, "total_plays": 41}, {"artist": "Gregory Alan Isakov", "effective_items": 8.275838869423854, "normalized": 0.3829388878644134, "n_candidates": 20, "total_plays": 106}, {"artist": "Gracie Abrams", "effective_items": 9.870288228064856, "normalized": 0.4668572751613082, "n_candidates": 20, "total_plays": 89}, {"artist": "Fleetwood Mac", "effective_items": 7.016015945640776, "normalized": 0.3166324181916198, "n_candidates": 20, "total_plays": 82}, {"artist": "Tamir", "effective_items": 5.336263021082007, "normalized": 0.22822436953063194, "n_candidates": 20, "total_plays": 75}, {"artist": "The Aces", "effective_items": 7.0545124297451585, "normalized": 0.31865854893395573, "n_candidates": 20, "total_plays": 43}, {"artist": "Coldplay", "effective_items": 8.38464482480556, "normalized": 0.3886655170950295, "n_candidates": 20, "total_plays": 63}, {"artist": "Big Thief", "effective_items": 10.233817076618108, "normalized": 0.4859903724535846, "n_candidates": 20, "total_plays": 75}, {"artist": "Bob Dylan", "effective_items": 8.427461346816617, "normalized": 0.39091901825350617, "n_candidates": 20, "total_plays": 69}, {"artist": "Lucy Dacus", "effective_items": 10.722728587924967, "normalized": 0.5117225572592088, "n_candidates": 20, "total_plays": 60}, {"artist": "Griff", "effective_items": 7.307353485027717, "normalized": 0.3319659728961956, "n_candidates": 20, "total_plays": 101}, {"artist": "Susanne Sundf\u00f8r", "effective_items": 8.190203653796246, "normalized": 0.378431771252434, "n_candidates": 20, "total_plays": 80}, {"artist": "boygenius", "effective_items": 12.616730804930707, "normalized": 0.6114068844700372, "n_candidates": 20, "total_plays": 107}, {"artist": "The Beach Boys", "effective_items": 10.87114576250895, "normalized": 0.5195339875004711, "n_candidates": 20, "total_plays": 63}, {"artist": "Alon Eder", "effective_items": 8.755457044842437, "normalized": 0.4081819497285493, "n_candidates": 20, "total_plays": 85}, {"artist": "Lola Marsh", "effective_items": 10.290854667182128, "normalized": 0.4889923509043225, "n_candidates": 20, "total_plays": 70}, {"artist": "Mark Ronson", "effective_items": 5.936360106391739, "normalized": 0.2598084266521968, "n_candidates": 20, "total_plays": 76}, {"artist": "Daniela Spector", "effective_items": 7.1272465693320415, "normalized": 0.32248666154379163, "n_candidates": 20, "total_plays": 79}, {"artist": "Tame Impala", "effective_items": 12.96318256225493, "normalized": 0.6296411874871016, "n_candidates": 20, "total_plays": 71}, {"artist": "Andrew Bird", "effective_items": 3.886692527239577, "normalized": 0.15193118564418825, "n_candidates": 20, "total_plays": 22}, {"artist": "Father John Misty", "effective_items": 3.5733462670185543, "normalized": 0.13543927721150287, "n_candidates": 20, "total_plays": 69}, {"artist": "Yiruma", "effective_items": 11.240141059839287, "normalized": 0.5389547926231204, "n_candidates": 20, "total_plays": 66}, {"artist": "Elbow", "effective_items": 6.301254424453084, "normalized": 0.27901339076068865, "n_candidates": 20, "total_plays": 16}, {"artist": "Men I Trust", "effective_items": 7.127127940422332, "normalized": 0.32248041791696486, "n_candidates": 20, "total_plays": 22}, {"artist": "Norah Jones", "effective_items": 6.812714679265659, "normalized": 0.30593235154029785, "n_candidates": 20, "total_plays": 43}, {"artist": "SYML", "effective_items": 6.365104010347374, "normalized": 0.28237389528144075, "n_candidates": 20, "total_plays": 40}, {"artist": "Arctic Monkeys", "effective_items": 9.228124246484178, "normalized": 0.43305917086758833, "n_candidates": 20, "total_plays": 65}, {"artist": "Michael Kiwanuka", "effective_items": 6.737616391799984, "normalized": 0.30197981009473596, "n_candidates": 20, "total_plays": 44}, {"artist": "Matti Caspi", "effective_items": 6.97567613704125, "normalized": 0.3145092703705921, "n_candidates": 20, "total_plays": 49}];
+
+function colorFor(v) {
+  if (v < 0.3) return "#ef4444";
+  if (v < 0.6) return "#f59e0b";
+  return "#22c55e";
+}
+
+// ---- stats ----
+function mean(arr) { return arr.reduce((a,b)=>a+b,0) / arr.length; }
+function median(arr) { const s=[...arr].sort((a,b)=>a-b); const m=Math.floor(s.length/2); return s.length%2 ? s[m] : (s[m-1]+s[m])/2; }
+function pstdev(arr) { const m=mean(arr); return Math.sqrt(mean(arr.map(x=>(x-m)**2))); }
+function corr(xs, ys) {
+  const mx=mean(xs), my=mean(ys);
+  const cov = mean(xs.map((x,i)=>(x-mx)*(ys[i]-my)));
+  return cov / (pstdev(xs)*pstdev(ys));
+}
+
+const norms = DATA.map(d => d.normalized);
+const plays = DATA.map(d => d.total_plays);
+const r = corr(plays, norms);
+
+const sorted = [...DATA].sort((a,b) => a.normalized - b.normalized);
+const mostConcentrated = sorted[0];
+const mostSpread = sorted[sorted.length-1];
+
+const statsEl = document.getElementById("stats");
+const stats = [
+  ["Artists analyzed", DATA.length],
+  ["Median spread", median(norms).toFixed(3)],
+  ["Plays↔Spread corr.", r.toFixed(3)],
+  ["Most concentrated", mostConcentrated.artist],
+  ["Most spread", mostSpread.artist],
+];
+statsEl.innerHTML = stats.map(([label, value]) =>
+  `<div class="stat"><div class="label">${label}</div><div class="value">${value}</div></div>`
+).join("");
+
+// ---- bar chart ----
+const barsEl = document.getElementById("bars");
+barsEl.innerHTML = sorted.map(d => {
+  const pct = (d.normalized * 100).toFixed(1);
+  const isExtreme = d.artist === mostConcentrated.artist || d.artist === mostSpread.artist;
+  return `
+    <div class="bar-row ${isExtreme ? 'highlight' : ''}" data-artist="${d.artist}" data-plays="${d.total_plays}" data-eff="${d.effective_items.toFixed(2)}" data-norm="${d.normalized.toFixed(3)}">
+      <div class="bar-name">${d.artist}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${colorFor(d.normalized)}"></div></div>
+      <div class="bar-val">${pct}%</div>
+    </div>`;
+}).join("");
+
+// ---- scatter plot ----
+const svgNS = "http://www.w3.org/2000/svg";
+const svg = document.getElementById("scatter");
+const W = 760, H = 420, M = { top: 20, right: 20, bottom: 40, left: 50 };
+svg.setAttribute("width", W);
+svg.setAttribute("height", H);
+svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+
+const xMax = Math.max(...plays) * 1.05;
+const yMax = 1;
+const xScale = x => M.left + (x / xMax) * (W - M.left - M.right);
+const yScale = y => H - M.bottom - (y / yMax) * (H - M.top - M.bottom);
+
+function svgEl(tag, attrs) {
+  const el = document.createElementNS(svgNS, tag);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+
+// grid + axes
+for (let gy = 0; gy <= 1; gy += 0.2) {
+  svg.appendChild(svgEl("line", { x1: M.left, x2: W - M.right, y1: yScale(gy), y2: yScale(gy), stroke: "#2a2f3b", "stroke-width": 1 }));
+  const t = svgEl("text", { x: M.left - 8, y: yScale(gy) + 4, "text-anchor": "end", "font-size": 10, fill: "#8b93a7" });
+  t.textContent = gy.toFixed(1);
+  svg.appendChild(t);
+}
+for (let gx = 0; gx <= xMax; gx += 50) {
+  svg.appendChild(svgEl("line", { x1: xScale(gx), x2: xScale(gx), y1: M.top, y2: H - M.bottom, stroke: "#2a2f3b", "stroke-width": 1 }));
+  const t = svgEl("text", { x: xScale(gx), y: H - M.bottom + 16, "text-anchor": "middle", "font-size": 10, fill: "#8b93a7" });
+  t.textContent = gx;
+  svg.appendChild(t);
+}
+const xlabel = svgEl("text", { x: (W+M.left)/2, y: H - 4, "text-anchor": "middle", "font-size": 11, fill: "#8b93a7" });
+xlabel.textContent = "Total plays";
+svg.appendChild(xlabel);
+const ylabel = svgEl("text", { x: 14, y: H/2, "text-anchor": "middle", "font-size": 11, fill: "#8b93a7", transform: `rotate(-90, 14, ${H/2})` });
+ylabel.textContent = "Normalized spread";
+svg.appendChild(ylabel);
+
+// trend line (least squares)
+const mx = mean(plays), my = mean(norms);
+const slope = mean(plays.map((x,i)=>(x-mx)*(norms[i]-my))) / mean(plays.map(x=>(x-mx)**2));
+const intercept = my - slope*mx;
+const x0 = 0, x1 = xMax;
+svg.appendChild(svgEl("line", {
+  x1: xScale(x0), y1: yScale(Math.max(0,Math.min(1,intercept + slope*x0))),
+  x2: xScale(x1), y2: yScale(Math.max(0,Math.min(1,intercept + slope*x1))),
+  stroke: "#8b93a7", "stroke-width": 1.5, "stroke-dasharray": "5,4"
+}));
+
+const tooltip = document.getElementById("tooltip");
+
+DATA.forEach(d => {
+  const isExtreme = d.artist === mostConcentrated.artist || d.artist === mostSpread.artist;
+  const c = svgEl("circle", {
+    cx: xScale(d.total_plays), cy: yScale(d.normalized),
+    r: isExtreme ? 6 : 4,
+    fill: colorFor(d.normalized),
+    stroke: isExtreme ? "#fff" : "none",
+    "stroke-width": 1.5,
+    opacity: 0.85,
+  });
+  c.addEventListener("mousemove", (e) => {
+    tooltip.style.display = "block";
+    tooltip.style.left = (e.clientX + 14) + "px";
+    tooltip.style.top = (e.clientY + 14) + "px";
+    tooltip.innerHTML = `<b>${d.artist}</b><br>plays: ${d.total_plays}<br>effective items: ${d.effective_items.toFixed(1)} / 20<br>normalized: ${d.normalized.toFixed(3)}`;
+  });
+  c.addEventListener("mouseleave", () => { tooltip.style.display = "none"; });
+  svg.appendChild(c);
+  if (isExtreme) {
+    const label = svgEl("text", { x: xScale(d.total_plays) + 8, y: yScale(d.normalized) - 8, "font-size": 11, fill: "#e7e9ee" });
+    label.textContent = d.artist;
+    svg.appendChild(label);
+  }
+});
+
+// bar-row tooltips
+document.querySelectorAll(".bar-row").forEach(row => {
+  row.addEventListener("mousemove", (e) => {
+    tooltip.style.display = "block";
+    tooltip.style.left = (e.clientX + 14) + "px";
+    tooltip.style.top = (e.clientY + 14) + "px";
+    tooltip.innerHTML = `<b>${row.dataset.artist}</b><br>plays: ${row.dataset.plays}<br>effective items: ${row.dataset.eff} / 20<br>normalized: ${row.dataset.norm}`;
+  });
+  row.addEventListener("mouseleave", () => { tooltip.style.display = "none"; });
+});
+</script>
+</body>
+</html>
