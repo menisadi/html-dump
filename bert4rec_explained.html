@@ -1,0 +1,728 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bert4RecEmbedder — two explanations</title>
+<style>
+  :root {
+    --bg: #0f1218;
+    --fg: #e6e9ef;
+    --box: #1b202b;
+    --border: #4b5563;
+    --accent: #60a5fa;
+    --accent-bg: #16213a;
+    --muted: #9aa4b2;
+    --good: #34d399;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    margin: 0;
+    padding: 2rem 1rem 4rem;
+    line-height: 1.55;
+  }
+  .wrap {
+    max-width: 780px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 1.35rem;
+    margin: 0 0 0.3rem;
+  }
+  .subtitle {
+    color: var(--muted);
+    font-size: 0.92rem;
+    margin-bottom: 1.75rem;
+  }
+  code.file {
+    background: var(--box);
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.85em;
+  }
+  .tabs {
+    display: flex;
+    gap: 0.5rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1.75rem;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    padding-top: 0.25rem;
+    z-index: 5;
+  }
+  .tab-btn {
+    appearance: none;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 0.95rem;
+    font-weight: 600;
+    padding: 0.6rem 0.9rem;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  .tab-btn:hover { color: var(--fg); }
+  .tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  section {
+    margin-bottom: 1.9rem;
+  }
+  h2 {
+    font-size: 1.05rem;
+    margin: 0 0 0.5rem;
+    color: var(--fg);
+  }
+  h2 .tag {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--accent);
+    background: var(--accent-bg);
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    padding: 0.1rem 0.55rem;
+    margin-left: 0.5rem;
+    vertical-align: middle;
+  }
+  p { margin: 0 0 0.8rem; }
+  ul, ol {
+    margin: 0 0 0.8rem;
+    padding-left: 1.3rem;
+  }
+  li { margin-bottom: 0.4rem; }
+  strong { color: var(--fg); }
+  .callout {
+    border: 1px solid var(--border);
+    background: var(--box);
+    border-radius: 8px;
+    padding: 0.85rem 1rem;
+    font-size: 0.92rem;
+    margin: 0.9rem 0;
+  }
+  .callout.analogy {
+    border-color: var(--accent);
+    background: var(--accent-bg);
+  }
+  .callout .k {
+    font-weight: 700;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 0.3rem;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  code.inline {
+    background: var(--box);
+    border: 1px solid var(--border);
+    padding: 0.05rem 0.35rem;
+    border-radius: 4px;
+    font-size: 0.88em;
+  }
+  .grid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8rem;
+  }
+  @media (max-width: 560px) {
+    .grid2 { grid-template-columns: 1fr; }
+    .tab-btn { font-size: 0.88rem; padding: 0.55rem 0.6rem; }
+  }
+  .compare-box {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.7rem 0.9rem;
+    background: var(--box);
+    font-size: 0.88rem;
+  }
+  .compare-box .h {
+    font-weight: 700;
+    margin-bottom: 0.35rem;
+    font-size: 0.85rem;
+  }
+  footer {
+    margin-top: 2.5rem;
+    font-size: 0.78rem;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    padding-top: 1rem;
+  }
+
+  .flow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+  .flow .box {
+    border: 1.5px solid var(--border);
+    background: var(--box);
+    border-radius: 8px;
+    padding: 0.7rem 1.1rem;
+    text-align: center;
+    min-width: 240px;
+    font-size: 0.9rem;
+  }
+  .flow .box .flabel {
+    font-weight: 600;
+  }
+  .flow .box .fdetail {
+    color: var(--muted);
+    font-size: 0.78rem;
+    margin-top: 0.15rem;
+  }
+  .farrow {
+    height: 26px;
+    width: 2px;
+    background: var(--border);
+    position: relative;
+  }
+  .farrow::after {
+    content: "";
+    position: absolute;
+    bottom: -1px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 8px solid var(--border);
+  }
+  .fside-by-side {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .fsum-node {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    background: var(--box);
+  }
+  .fstack {
+    border: 1.5px dashed var(--accent);
+    border-radius: 10px;
+    padding: 1rem;
+    background: var(--accent-bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+  }
+  .fstack-title {
+    font-size: 0.82rem;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 0.6rem;
+  }
+  .fstack-title .fcount {
+    font-weight: 400;
+    color: var(--muted);
+  }
+  .fresidual-box {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.5rem 0.9rem;
+    background: var(--bg);
+    font-size: 0.82rem;
+    min-width: 200px;
+    text-align: center;
+  }
+  .fbranches {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+    margin-top: 0.5rem;
+  }
+  .fbranch {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+  .fbranch-title {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    margin-bottom: 0.4rem;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Bert4RecEmbedder, explained two ways</h1>
+  <p class="subtitle">
+    Same model, two audiences. Source: <code class="file">bvw/bert4rec.py</code>
+    (via <code class="file">bvw/embedder.py</code>).
+  </p>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-panel="tutor">Teacher / tutor</button>
+    <button class="tab-btn" data-panel="interviewer">Interviewer</button>
+    <button class="tab-btn" data-panel="math">Math student</button>
+    <button class="tab-btn" data-panel="diagram">Diagram</button>
+  </div>
+
+  <!-- ============ TUTOR PANEL ============ -->
+  <div class="panel active" id="tutor">
+
+    <section>
+      <h2>Where we're starting from</h2>
+      <p>
+        You know Word2Vec: an item gets a vector, trained so items that show up in similar
+        <em>local contexts</em> end up with similar vectors. That's the model to keep in your head,
+        because BERT4Rec is best understood as "what Word2Vec is missing."
+      </p>
+      <ul>
+        <li>Word2Vec looks at a small fixed window around each item and doesn't care about order within it.</li>
+        <li>BERT4Rec looks at the <strong>whole sequence at once</strong> and explicitly knows the order.</li>
+      </ul>
+      <p>The mechanism that makes that possible is <strong>self-attention</strong>. That's the one new idea here — everything else (embeddings, a linear head, cross-entropy loss) you already know.</p>
+    </section>
+
+    <section>
+      <h2>Attention, as an analogy first</h2>
+      <div class="callout analogy">
+        <span class="k">Analogy</span>
+        Picture every item in the sequence as a person in a small meeting, each holding their own
+        embedding as a "position paper." Before writing their final opinion, every person turns to
+        <em>every other</em> person in the room (not just their neighbors) and asks: "how relevant are you
+        to what I'm trying to figure out?" People who seem relevant get listened to more; irrelevant
+        people get mostly ignored. Everyone updates their opinion based on this weighted listening,
+        simultaneously. That updated opinion is the new representation for that position.
+      </div>
+      <p>That's self-attention. Formally, each position produces three vectors from its embedding:</p>
+      <ul>
+        <li><strong>Query</strong> — "what am I looking for?"</li>
+        <li><strong>Key</strong> — "what do I have to offer, as a label?"</li>
+        <li><strong>Value</strong> — "what do I have to offer, as content?"</li>
+      </ul>
+      <p>
+        Position <em>i</em>'s query is compared (dot product) against every position's key to get relevance
+        scores, those scores are softmax-normalized into weights, and position <em>i</em>'s new
+        representation is the weighted sum of everyone's <em>values</em>. Do this for all positions at once
+        and you've replaced "average over a fixed window" with "learned, content-dependent weighted average
+        over the entire sequence."
+      </p>
+      <p>
+        <strong>Multi-head</strong> just means doing this several times in parallel with different, smaller
+        query/key/value projections (<code class="inline">n_heads = 4</code> here), so different heads can
+        specialize in different kinds of relevance, then their outputs are concatenated.
+      </p>
+    </section>
+
+    <section>
+      <h2>Why "bidirectional" matters here</h2>
+      <p>
+        Nothing about attention forces position <em>i</em> to only look backward. In BERT-style models
+        there's no causal mask, so every position can attend to positions before <em>and</em> after it.
+        That's the "bidirectional" in BERT. A GPT-style model masks out future positions so it can only
+        predict what comes next; BERT4Rec doesn't need that restriction because its training task isn't
+        "predict the next item" — it's a fill-in-the-blank task.
+      </p>
+    </section>
+
+    <section>
+      <h2>The training task: Cloze / masked-item prediction</h2>
+      <p>Instead of predicting the next item in the sequence, the model plays a fill-in-the-blank game:</p>
+      <ol>
+        <li>Randomly hide ~15% of the items in each sequence, replacing them with a special <code class="inline">MASK</code> token (<code class="file">Bert4RecConfig.mask_prob = 0.15</code>).</li>
+        <li>Run the whole (partially masked) sequence through the encoder.</li>
+        <li>At each masked position, ask the model to predict which item was actually there, using a plain linear layer + softmax over the vocabulary.</li>
+        <li>Backpropagate only through the masked positions (everywhere else is ignored in the loss).</li>
+      </ol>
+      <p>
+        Why is this a good training signal? Because to correctly guess the hidden item, the model is
+        forced to use the surrounding context on <em>both</em> sides — which is exactly the representation-
+        learning behavior we want for building a user embedding later.
+      </p>
+    </section>
+
+    <section>
+      <h2>Positional embeddings: how order gets in</h2>
+      <p>
+        Self-attention on its own is order-blind — swap two positions and the set of query/key/value
+        interactions is identical. So before anything else, each item's embedding is <em>added</em> to a
+        learned vector for "I am at position 3" (or position 7, etc). Now the same item behaves differently
+        depending on where it sits in the sequence, which is the model's only way of knowing about order at
+        all.
+      </p>
+      <div class="callout">
+        <span class="k">Contrast with Word2Vec</span>
+        Word2Vec has no notion of absolute position — "bought bread then milk" and "bought milk then bread"
+        look identical to it. BERT4Rec can, in principle, tell these apart.
+      </div>
+    </section>
+
+    <section>
+      <h2>Putting the pieces together</h2>
+      <p>One encoder layer, stacked twice here, does (in order):</p>
+      <div class="grid2">
+        <div class="compare-box">
+          <div class="h">1. Self-attention</div>
+          Every position gathers a weighted mix of every other (non-padding) position's value vectors,
+          as above.
+        </div>
+        <div class="compare-box">
+          <div class="h">2. Add &amp; norm</div>
+          The attention output is added back to its input (a residual connection, so the model can
+          "skip" the attention step if it's not useful) and normalized.
+        </div>
+        <div class="compare-box">
+          <div class="h">3. Feedforward</div>
+          A small 2-layer MLP (dim → 4×dim → dim) applied independently at each position, giving the
+          model extra non-linear capacity beyond attention.
+        </div>
+        <div class="compare-box">
+          <div class="h">4. Add &amp; norm</div>
+          Same residual + normalize pattern again.
+        </div>
+      </div>
+      <p>Stack that block <code class="inline">n_layers = 2</code> times and you get progressively richer, context-aware representations per item.</p>
+    </section>
+
+    <section>
+      <h2>From hidden states to one user vector</h2>
+      <p>
+        After training, the linear "predict the masked item" head is thrown away — it only existed to
+        create a training signal. What we actually want is the sequence of hidden states themselves
+        (one dim-64 vector per position), and <code class="inline">embed()</code> collapses that into a
+        single fixed-size vector by <strong>averaging the hidden states across all non-padding
+        positions</strong>. That's the "user embedding," directly comparable to a Word2Vec-based one.
+      </p>
+    </section>
+
+    <section>
+      <h2>The one-sentence version</h2>
+      <div class="callout analogy">
+        Word2Vec gives every item a vector from "who tends to appear near me." BERT4Rec gives every
+        <em>position in a sequence</em> a vector from "who in this whole sequence, in what order,
+        is relevant to me," learned by playing fill-in-the-blank — and then we average those
+        position vectors into one user embedding.
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ============ INTERVIEWER PANEL ============ -->
+  <div class="panel" id="interviewer">
+
+    <section>
+      <h2>What it is</h2>
+      <p>
+        A compact BERT4Rec (Sun et al., 2019): a bidirectional transformer encoder trained with a
+        Cloze/masked-item objective over interaction sequences, used here strictly as a user-embedding
+        generator rather than a full recommender with a ranking head.
+      </p>
+    </section>
+
+    <section>
+      <h2>Architecture <span class="tag">bert4rec.py:71-98</span></h2>
+      <ul>
+        <li>Token embedding + learned positional embedding, summed — order is encoded explicitly, not discarded.</li>
+        <li><code class="inline">nn.TransformerEncoder</code>, 2 layers, 4 heads, dim 64, full bidirectional self-attention (no causal mask), padding excluded via <code class="inline">src_key_padding_mask</code>.</li>
+        <li>Linear head projects back to vocab size for the pretext task only; discarded at inference.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Training objective</h2>
+      <p>
+        Cloze-style masking: each non-pad position independently masked with probability 0.15, model
+        predicts the original id at masked positions only
+        (<code class="inline">CrossEntropyLoss(ignore_index=-100)</code>). Denser signal per sequence
+        than next-item prediction (multiple masked positions per step), and lets the encoder use both
+        left and right context to disambiguate.
+      </p>
+    </section>
+
+    <section>
+      <h2>Embedding production</h2>
+      <p>
+        Mean-pool final-layer hidden states over non-padding positions. Satisfies the shared
+        <code class="inline">Embedder</code> protocol (<code class="file">embedder.py</code>) — same
+        <code class="inline">fit(sequences)</code> / <code class="inline">embed(tokens) → dim vector</code>
+        contract as the Word2Vec baseline, for an apples-to-apples comparison.
+      </p>
+    </section>
+
+    <section>
+      <h2>Justification</h2>
+      <div class="grid2">
+        <div class="compare-box">
+          <div class="h">vs. Word2Vec</div>
+          Skip-gram is order-invariant within a fixed local window — captures local co-occurrence, nothing
+          about sequence order or long-range dependency. BERT4Rec adds positional embeddings and full
+          self-attention, so it can exploit ordering and arbitrary-distance relationships. That's the
+          hypothesis this comparison is testing, not an assumed win.
+        </div>
+        <div class="compare-box">
+          <div class="h">Bidirectional cloze vs. autoregressive</div>
+          Richer training signal per step (many masked positions vs. one next-item target), and avoids the
+          exposure-bias asymmetry of always predicting the last item only.
+        </div>
+      </div>
+      <div class="callout">
+        <span class="k">Why so small</span>
+        2 layers, dim 64, 8 epochs is a deliberate simplification, stated in the module docstring — the
+        goal is a few-second CPU comparison, not a paper-scale reproduction. A faithful BERT4Rec would use
+        more layers/heads, longer sequences, and far more data/compute.
+      </div>
+      <div class="callout">
+        <span class="k">Why mean pooling</span>
+        Simplest permutation-agnostic way to collapse a variable-length sequence into a fixed vector, and
+        it mirrors how the Word2Vec baseline aggregates its own item vectors — keeping the comparison fair.
+      </div>
+    </section>
+
+    <section>
+      <h2>Limitations I'd flag unprompted</h2>
+      <ul>
+        <li>Small model capacity likely underfits richer or larger catalogs.</li>
+        <li>Mean pooling discards some of the positional/attention structure the model spent capacity learning — an attention-pooled or CLS-token readout might use it better.</li>
+        <li>8 fixed epochs, no validation-based early stopping — tuned for a quick demo, not production robustness.</li>
+      </ul>
+    </section>
+
+  </div>
+
+  <!-- ============ MATH STUDENT PANEL ============ -->
+  <div class="panel" id="math">
+
+    <section>
+      <h2>Attention as a matrix operation</h2>
+      <p>
+        Stack the sequence's embeddings as rows of a matrix <code class="inline">X ∈ ℝⁿˣᵈ</code>
+        (<code class="inline">n</code> positions, <code class="inline">d</code> dims). Three learned
+        linear maps produce
+      </p>
+      <p>
+        <code class="inline">Q = X W<sub>Q</sub></code>,
+        <code class="inline">K = X W<sub>K</sub></code>,
+        <code class="inline">V = X W<sub>V</sub></code>,
+        &nbsp;with <code class="inline">W<sub>Q</sub>, W<sub>K</sub>, W<sub>V</sub> ∈ ℝᵈˣᵈᵏ</code>.
+      </p>
+      <p>Then</p>
+      <div class="callout">
+        <code class="inline">Attention(Q, K, V) = softmax( Q Kᵀ / √d<sub>k</sub> ) V</code>
+      </div>
+      <p>
+        <code class="inline">Q Kᵀ ∈ ℝⁿˣⁿ</code> is a matrix of pairwise dot-product similarities between
+        every pair of positions. <code class="inline">softmax</code> is applied
+        <strong>row-wise</strong>, so row <code class="inline">i</code> becomes a probability
+        distribution over the <code class="inline">n</code> positions — the attention weights for
+        position <code class="inline">i</code>. Multiplying by <code class="inline">V</code> turns each
+        row into a convex combination of value vectors. So the whole operation is: build an
+        <code class="inline">n×n</code> row-stochastic matrix from content similarity, then use it to
+        take a weighted average of <code class="inline">V</code>'s rows.
+      </p>
+    </section>
+
+    <section>
+      <h2>Why divide by √d<sub>k</sub></h2>
+      <p>
+        If the entries of <code class="inline">q</code> and <code class="inline">k</code> are roughly
+        i.i.d. with mean 0, variance 1, then <code class="inline">q·k = Σ q<sub>j</sub>k<sub>j</sub></code>
+        is a sum of <code class="inline">d<sub>k</sub></code> roughly-independent terms, so its variance
+        grows linearly with <code class="inline">d<sub>k</sub></code> and its standard deviation with
+        <code class="inline">√d<sub>k</sub></code>. Left unscaled, dot products get large in magnitude as
+        <code class="inline">d<sub>k</sub></code> grows, pushing softmax into a near-one-hot regime with
+        tiny gradients. Dividing by <code class="inline">√d<sub>k</sub></code> keeps the pre-softmax
+        logits at roughly unit variance regardless of dimension.
+      </p>
+    </section>
+
+    <section>
+      <h2>Multi-head as a subspace decomposition</h2>
+      <p>
+        Instead of one <code class="inline">d → d</code> attention, split into
+        <code class="inline">h</code> heads (<code class="inline">h = 4</code> here), each projecting
+        into a <code class="inline">d/h</code>-dim subspace with its own
+        <code class="inline">W<sub>Q</sub>, W<sub>K</sub>, W<sub>V</sub></code>, running the identical
+        softmax-attention operation independently in each subspace, then concatenating the
+        <code class="inline">h</code> outputs back to dimension <code class="inline">d</code>. Each head
+        can learn a different similarity structure (a different "which directions in embedding space
+        count as similar" metric) rather than being forced to share one.
+      </p>
+    </section>
+
+    <section>
+      <h2>Positional embeddings break a symmetry</h2>
+      <p>
+        Self-attention as defined above is <strong>permutation-equivariant</strong>: if
+        <code class="inline">P</code> is any permutation matrix, feeding <code class="inline">PX</code>
+        instead of <code class="inline">X</code> produces exactly <code class="inline">P</code> applied
+        to the output — the model literally cannot distinguish orderings of the same set of items. A
+        learned positional vector <code class="inline">p<sub>i</sub></code> added to each row
+        (<code class="inline">x<sub>i</sub> + p<sub>i</sub></code>) breaks that symmetry: it makes the
+        input depend on absolute index <code class="inline">i</code>, not just on the multiset of
+        embeddings, which is the only way position can enter the computation at all.
+      </p>
+    </section>
+
+    <section>
+      <h2>Residual connections and LayerNorm</h2>
+      <p>
+        Each sublayer computes <code class="inline">x + f(x)</code> rather than just
+        <code class="inline">f(x)</code>. This makes the identity map a trivial fixed point of
+        training — if <code class="inline">f</code> isn't useful yet, gradients still flow through the
+        <code class="inline">x</code> term unimpeded, rather than every layer needing to learn a
+        faithful pass-through from scratch. LayerNorm then re-standardizes each row to zero mean, unit
+        variance (with learned scale/shift), which keeps activation statistics stable as they pass
+        through <code class="inline">n_layers = 2</code> stacked blocks.
+      </p>
+    </section>
+
+    <section>
+      <h2>The training objective as MLE</h2>
+      <p>
+        At each masked position, the linear head + softmax defines a categorical distribution over the
+        vocabulary, <code class="inline">p<sub>θ</sub>(y | context)</code>. Training minimizes
+        cross-entropy at masked positions only, which is exactly maximizing the log-likelihood of the
+        true token under the model:
+      </p>
+      <div class="callout">
+        <code class="inline">
+          L(θ) = − Σ<sub>i ∈ masked</sub> log p<sub>θ</sub>( y<sub>i</sub> | x<sub>\i</sub> )
+        </code>
+      </div>
+      <p>
+        where <code class="inline">x<sub>\i</sub></code> denotes the full sequence with position
+        <code class="inline">i</code> replaced by <code class="inline">MASK</code>. It's ordinary
+        multi-class MLE, just evaluated on a random subset of positions per example rather than a single
+        fixed target (as in next-token prediction).
+      </p>
+    </section>
+
+    <section>
+      <h2>Mean pooling as a linear readout</h2>
+      <p>
+        Let <code class="inline">H ∈ ℝⁿˣᵈ</code> be the final layer's hidden states and
+        <code class="inline">m ∈ {0,1}ⁿ</code> the non-padding mask. The user embedding is
+        <code class="inline">(mᵀH) / (mᵀ𝟙)</code> — the unweighted average over valid rows. It's the
+        simplest linear map <code class="inline">ℝⁿˣᵈ → ℝᵈ</code> that's invariant to permuting the
+        (non-pad) rows, which matches the fact that nothing downstream should care about where in the
+        original sequence a signal came from, only that it's present somewhere.
+      </p>
+    </section>
+
+  </div>
+
+  <!-- ============ DIAGRAM PANEL ============ -->
+  <div class="panel" id="diagram">
+
+    <section>
+      <div class="flow">
+
+        <div class="box">
+          <div class="flabel">Input token ids</div>
+          <div class="fdetail">shape [B, L]</div>
+        </div>
+        <div class="farrow"></div>
+
+        <div class="fside-by-side">
+          <div class="box">
+            <div class="flabel">Token embedding</div>
+            <div class="fdetail">nn.Embedding(vocab, dim)</div>
+          </div>
+          <div class="box">
+            <div class="flabel">Positional embedding</div>
+            <div class="fdetail">nn.Embedding(max_len, dim)</div>
+          </div>
+        </div>
+        <div class="farrow"></div>
+        <div class="fsum-node">+</div>
+        <div class="farrow"></div>
+
+        <div class="box">
+          <div class="flabel">LayerNorm</div>
+        </div>
+        <div class="farrow"></div>
+
+        <div class="fstack">
+          <div class="fstack-title">TransformerEncoderLayer &times; <span class="fcount">n_layers = 2</span></div>
+          <div class="fresidual-box">Multi-head self-attention &middot; n_heads = 4</div>
+          <div class="farrow" style="height:14px;"></div>
+          <div class="fresidual-box">Add &amp; Norm</div>
+          <div class="farrow" style="height:14px;"></div>
+          <div class="fresidual-box">Feedforward: dim &rarr; dim&times;4 &rarr; dim</div>
+          <div class="farrow" style="height:14px;"></div>
+          <div class="fresidual-box">Add &amp; Norm</div>
+        </div>
+        <div class="farrow"></div>
+
+        <div class="box">
+          <div class="flabel">Hidden states</div>
+          <div class="fdetail">shape [B, L, dim]</div>
+        </div>
+
+        <div class="fbranches">
+          <div class="fbranch">
+            <div class="fbranch-title">Training only</div>
+            <div class="box">
+              <div class="flabel">Linear head</div>
+              <div class="fdetail">dim &rarr; vocab</div>
+            </div>
+            <div class="farrow"></div>
+            <div class="box">
+              <div class="flabel">Masked-item loss</div>
+              <div class="fdetail">cross-entropy on MASK positions</div>
+            </div>
+          </div>
+          <div class="fbranch">
+            <div class="fbranch-title">embed() &middot; inference</div>
+            <div class="box">
+              <div class="flabel">Mean-pool</div>
+              <div class="fdetail">average over non-PAD positions</div>
+            </div>
+            <div class="farrow"></div>
+            <div class="box">
+              <div class="flabel">User embedding</div>
+              <div class="fdetail">shape [dim]</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </div>
+
+  <footer>
+    Companion reference to <code class="file">bvw/docs/bert4rec_architecture.html</code> — static explainer, not executable.
+  </footer>
+
+</div>
+
+<script>
+  document.querySelectorAll(".tab-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      document.querySelectorAll(".tab-btn").forEach(function (b) { b.classList.remove("active"); });
+      document.querySelectorAll(".panel").forEach(function (p) { p.classList.remove("active"); });
+      btn.classList.add("active");
+      document.getElementById(btn.dataset.panel).classList.add("active");
+    });
+  });
+</script>
+
+</body>
+</html>
