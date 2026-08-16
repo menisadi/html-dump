@@ -29,6 +29,7 @@ done
   a:hover { text-decoration: underline; }
   .date { color: #888; font-size: 0.85rem; white-space: nowrap; }
 </style>
+<script data-goatcounter="https://menis-html-dump.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 </head>
 <body>
 <h1>html-dump</h1>
