@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>לוח החוגים השבועי</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#FAFAF8;
+  --paper:#FFFFFF;
+  --ink:#1C1B1A;
+  --muted:#7A766F;
+  --line:#E7E4DE;
+  --line-strong:#D8D4CC;
+
+  --yuval:#2D5F8A;   --yuval-bg:#E9F1F8;
+  --ofer:#C0722A;    --ofer-bg:#FBEEE1;
+  --neta:#8B4472;    --neta-bg:#F6E9F1;
+  --uri:#3F7856;     --uri-bg:#E9F3EC;
+
+  --radius:10px;
+}
+
+*{ box-sizing:border-box; }
+
+html, body{
+  direction:rtl;
+}
+
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:'Heebo', sans-serif;
+  padding:32px 20px 60px;
+}
+
+.page{
+  max-width:1080px;
+  margin:0 auto;
+}
+
+/* ---------- Header ---------- */
+header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  flex-wrap:wrap;
+  gap:16px;
+  margin-bottom:28px;
+  padding-bottom:20px;
+  border-bottom:2px solid var(--ink);
+}
+
+h1{
+  font-size:clamp(24px, 4vw, 34px);
+  font-weight:800;
+  margin:0 0 6px;
+  letter-spacing:-0.5px;
+}
+
+.subtitle{
+  color:var(--muted);
+  font-size:14px;
+  margin:0;
+}
+
+.legend{
+  display:flex;
+  gap:14px;
+  flex-wrap:wrap;
+}
+
+.legend-item{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-size:13px;
+  font-weight:600;
+  font-family:inherit;
+  color:var(--ink);
+  background:transparent;
+  border:1px solid transparent;
+  border-radius:20px;
+  padding:5px 10px 5px 6px;
+  cursor:pointer;
+  transition:background 0.15s ease, opacity 0.15s ease, border-color 0.15s ease;
+}
+
+.legend-item:hover{ background:var(--paper); border-color:var(--line); }
+
+.legend-item:focus-visible{ outline:2px solid var(--yuval); outline-offset:2px; }
+
+.legend.filtered .legend-item{ opacity:0.4; }
+.legend.filtered .legend-item.active{
+  opacity:1;
+  background:var(--paper);
+  border-color:var(--line-strong);
+}
+
+.dot{
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  display:inline-block;
+  flex-shrink:0;
+}
+
+.dot.yuval{ background:var(--yuval); }
+.dot.ofer{ background:var(--ofer); }
+.dot.neta{ background:var(--neta); }
+.dot.uri{ background:var(--uri); }
+
+.shared-note{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:12.5px;
+  color:var(--muted);
+  margin-top:14px;
+}
+
+.shared-swatch{
+  width:22px;
+  height:14px;
+  border-radius:4px;
+  border:1px solid var(--line-strong);
+  background:repeating-linear-gradient(45deg, #cfcac0 0 4px, #ffffff 4px 8px);
+  flex-shrink:0;
+}
+
+/* ---------- View toggle ---------- */
+.view-toggle{
+  display:inline-flex;
+  gap:4px;
+  padding:4px;
+  background:var(--paper);
+  border:1px solid var(--line);
+  border-radius:30px;
+  margin-bottom:18px;
+}
+
+.view-btn{
+  font-family:inherit;
+  font-size:13px;
+  font-weight:600;
+  color:var(--muted);
+  background:transparent;
+  border:none;
+  border-radius:24px;
+  padding:8px 18px;
+  cursor:pointer;
+  transition:background 0.15s ease, color 0.15s ease;
+}
+
+.view-btn:hover{ color:var(--ink); }
+
+.view-btn.active{
+  background:var(--ink);
+  color:var(--bg);
+}
+
+.view-btn:focus-visible{ outline:2px solid var(--yuval); outline-offset:2px; }
+
+/* ---------- Agenda view (on-screen) ---------- */
+.agenda-view{
+  display:none;
+  flex-direction:column;
+  gap:14px;
+}
+
+body.show-agenda .week-view{ display:none; }
+body.show-agenda .agenda-view{ display:flex; }
+
+/* ---------- Grid view (desktop) ---------- */
+.grid-wrap{
+  display:grid;
+  grid-template-columns: 56px repeat(5, 1fr);
+  background:var(--paper);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  overflow:hidden;
+}
+
+.day-header{
+  padding:14px 8px;
+  text-align:center;
+  font-weight:700;
+  font-size:14px;
+  background:var(--paper);
+  border-bottom:1px solid var(--line-strong);
+}
+
+.day-header.axis-header{
+  background:transparent;
+  border-bottom:1px solid transparent;
+}
+
+.time-axis{
+  position:relative;
+  border-inline-start:1px solid var(--line);
+}
+
+.time-label{
+  position:absolute;
+  inset-inline-end:6px;
+  transform:translateY(-50%);
+  font-size:11px;
+  color:var(--muted);
+  font-weight:500;
+}
+
+.day-col{
+  position:relative;
+  border-inline-start:1px solid var(--line);
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(13px * 12 - 1px),
+      var(--line) calc(13px * 12 - 1px),
+      var(--line) calc(13px * 12)
+    );
+}
+
+.block{
+  margin:2px;
+  border-radius:8px;
+  padding:6px 8px;
+  font-size:12px;
+  line-height:1.35;
+  overflow:hidden;
+  border:1px solid rgba(0,0,0,0.06);
+  position:relative;
+}
+
+.block .kid{
+  font-weight:700;
+  display:block;
+}
+
+.block .act{
+  font-weight:500;
+  opacity:0.9;
+  display:block;
+}
+
+.block .time{
+  font-size:10.5px;
+  opacity:0.75;
+  display:block;
+  margin-top:2px;
+}
+
+.block.yuval{ background:var(--yuval-bg); color:var(--yuval); }
+.block.ofer{ background:var(--ofer-bg); color:var(--ofer); }
+.block.neta{ background:var(--neta-bg); color:var(--neta); }
+.block.uri{ background:var(--uri-bg); color:var(--uri); }
+
+.block.shared::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:8px;
+  background:repeating-linear-gradient(45deg, currentColor 0 1px, transparent 1px 7px);
+  opacity:0.18;
+  pointer-events:none;
+}
+
+/* ---------- List view (mobile) ---------- */
+.list-wrap{
+  display:none;
+  flex-direction:column;
+  gap:14px;
+}
+
+.day-card{
+  background:var(--paper);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  overflow:hidden;
+}
+
+.day-card h2{
+  margin:0;
+  padding:12px 16px;
+  font-size:15px;
+  font-weight:700;
+  border-bottom:1px solid var(--line);
+}
+
+.day-card .empty{
+  padding:14px 16px;
+  font-size:13px;
+  color:var(--muted);
+}
+
+.row-item{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 16px;
+  border-bottom:1px solid var(--line);
+}
+
+.row-item:last-child{ border-bottom:none; }
+
+.row-item .bar{
+  width:4px;
+  align-self:stretch;
+  border-radius:2px;
+  flex-shrink:0;
+}
+
+.row-item .bar.yuval{ background:var(--yuval); }
+.row-item .bar.ofer{ background:var(--ofer); }
+.row-item .bar.neta{ background:var(--neta); }
+.row-item .bar.uri{ background:var(--uri); }
+
+.row-item .info{ flex:1; }
+
+.row-item .info .kid{
+  font-weight:700;
+  font-size:13.5px;
+}
+
+.row-item .info .act{
+  font-size:12.5px;
+  color:var(--muted);
+}
+
+.row-item .time{
+  font-size:12px;
+  font-weight:600;
+  color:var(--muted);
+  white-space:nowrap;
+}
+
+/* ---------- Unscheduled ---------- */
+.unscheduled{
+  margin-top:22px;
+  background:var(--paper);
+  border:1px dashed var(--line-strong);
+  border-radius:var(--radius);
+  padding:16px 18px;
+}
+
+.unscheduled h3{
+  margin:0 0 10px;
+  font-size:14px;
+  font-weight:700;
+  color:var(--muted);
+}
+
+.unscheduled ul{
+  margin:0;
+  padding:0;
+  list-style:none;
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+
+.unscheduled li{
+  font-size:13px;
+  background:var(--bg);
+  border:1px solid var(--line);
+  border-radius:20px;
+  padding:6px 14px;
+}
+
+/* ---------- Print button ---------- */
+.actions{
+  display:flex;
+  justify-content:flex-end;
+  margin-top:24px;
+}
+
+.print-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  background:var(--ink);
+  color:var(--bg);
+  border:none;
+  border-radius:30px;
+  padding:12px 22px;
+  font-family:inherit;
+  font-size:14px;
+  font-weight:600;
+  cursor:pointer;
+  transition:transform 0.15s ease, background 0.15s ease;
+}
+
+.print-btn:hover{ background:#3a3835; }
+.print-btn:active{ transform:scale(0.97); }
+.print-btn:focus-visible{ outline:2px solid var(--yuval); outline-offset:3px; }
+
+/* ---------- Print agenda (hidden on screen) ---------- */
+.agenda-print{ display:none; }
+
+@media print{
+  body *{ visibility:hidden; }
+  .agenda-print, .agenda-print *{ visibility:visible; }
+  .agenda-print{
+    display:block;
+    position:absolute;
+    inset-inline-start:0;
+    top:0;
+    width:100%;
+    padding:20px;
+  }
+  .agenda-print h1{
+    font-size:22px;
+    margin-bottom:4px;
+  }
+  .agenda-print .subtitle{
+    margin-bottom:20px;
+  }
+  .agenda-day{
+    margin-bottom:16px;
+    break-inside:avoid;
+  }
+  .agenda-day h2{
+    font-size:15px;
+    border-bottom:1px solid #000;
+    padding-bottom:4px;
+    margin:0 0 8px;
+  }
+  .agenda-row{
+    display:flex;
+    justify-content:space-between;
+    font-size:13px;
+    padding:4px 0;
+  }
+  .agenda-row .who{ font-weight:700; }
+  .agenda-empty{
+    font-size:12px;
+    color:#666;
+    padding:4px 0;
+  }
+  .agenda-unscheduled{
+    margin-top:18px;
+    font-size:12.5px;
+    border-top:1px solid #000;
+    padding-top:10px;
+  }
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 760px){
+  .grid-wrap{ display:none; }
+  .list-wrap{ display:flex; }
+  header{ flex-direction:column; align-items:flex-start; }
+}
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <header class="no-print">
+    <div>
+      <h1>לוח החוגים השבועי</h1>
+      <p class="subtitle">יובל · עופר · נטע · אורי</p>
+      <div class="shared-note">
+        <span class="shared-swatch"></span>
+        <span>קפוארה — חוג משותף לכל הילדים</span>
+      </div>
+    </div>
+    <div class="legend" id="legend">
+      <button type="button" class="legend-item" data-kid="יובל"><span class="dot yuval"></span>יובל</button>
+      <button type="button" class="legend-item" data-kid="עופר"><span class="dot ofer"></span>עופר</button>
+      <button type="button" class="legend-item" data-kid="נטע"><span class="dot neta"></span>נטע</button>
+      <button type="button" class="legend-item" data-kid="אורי"><span class="dot uri"></span>אורי</button>
+    </div>
+  </header>
+
+  <div class="view-toggle no-print">
+    <button type="button" class="view-btn active" data-view="week">תצוגה שבועית</button>
+    <button type="button" class="view-btn" data-view="agenda">תצוגת אג׳נדה</button>
+  </div>
+
+  <div class="week-view">
+    <!-- GRID VIEW -->
+    <div class="grid-wrap no-print" id="gridWrap"></div>
+
+    <!-- LIST VIEW (mobile fallback) -->
+    <div class="list-wrap no-print" id="listWrap"></div>
+  </div>
+
+  <!-- AGENDA VIEW (on-screen, toggle-able) -->
+  <div class="agenda-view no-print" id="agendaView"></div>
+
+  <div class="unscheduled no-print">
+    <h3>עדיין ללא שעה קבועה</h3>
+    <ul id="unscheduledList"></ul>
+  </div>
+
+  <div class="actions no-print">
+    <button class="print-btn" onclick="window.print()">
+      🖨 הדפסה כאג׳נדה
+    </button>
+  </div>
+
+  <!-- PRINT-ONLY AGENDA -->
+  <div class="agenda-print" id="agendaPrint"></div>
+
+</div>
+
+<script>
+const days = ['ראשון','שני','שלישי','רביעי','חמישי'];
+
+const kidClass = { 'יובל':'yuval', 'עופר':'ofer', 'נטע':'neta', 'אורי':'uri' };
+
+const activities = [
+  { day:'ראשון',  kid:'עופר', act:'קפוארה',        start:'17:05', end:'17:50', shared:true },
+  { day:'ראשון',  kid:'אורי', act:'טיפוס',          start:'18:00', end:'19:30' },
+  { day:'ראשון',  kid:'נטע',  act:'קפוארה',        start:'18:45', end:'19:45', shared:true },
+
+  { day:'שני',    kid:'יובל', act:'כדורגל',         start:'16:00', end:'17:15' },
+
+  { day:'שלישי',  kid:'אורי', act:'חרבות וכשפים',  start:'16:45', end:'18:15' },
+
+  { day:'רביעי',  kid:'יובל', act:'קפוארה',        start:'16:15', end:'17:00', shared:true, col:1 },
+  { day:'רביעי',  kid:'עופר', act:'חצוצרה',         start:'16:15', end:'17:00', col:2 },
+  { day:'רביעי',  kid:'נטע',  act:'קפוארה',        start:'18:45', end:'19:45', shared:true },
+
+  { day:'חמישי',  kid:'יובל', act:'כדורגל',         start:'16:00', end:'17:15' },
+];
+
+const unscheduled = [
+  { kid:'אורי', act:'חליל צד' },
+  { kid:'נטע',  act:'כינור' },
+];
+
+// ---------- filter state ----------
+let activeKid = null;
+
+function visibleActivities(){
+  return activeKid ? activities.filter(a => a.kid === activeKid) : activities;
+}
+
+function visibleUnscheduled(){
+  return activeKid ? unscheduled.filter(u => u.kid === activeKid) : unscheduled;
+}
+
+// ---------- time helpers ----------
+const DAY_START = 16*60; // 16:00
+const ROW_MIN = 5;
+const TOTAL_ROWS = (20*60 - DAY_START) / ROW_MIN; // 48 rows, until 20:00
+
+function toMin(t){
+  const [h,m] = t.split(':').map(Number);
+  return h*60+m;
+}
+
+function rowOf(t){
+  return Math.round((toMin(t) - DAY_START) / ROW_MIN) + 1;
+}
+
+// ---------- build grid view ----------
+function buildGrid(){
+  const wrap = document.getElementById('gridWrap');
+
+  // header row
+  let html = `<div class="day-header axis-header"></div>`;
+  days.forEach(d => html += `<div class="day-header">${d}</div>`);
+
+  // time axis
+  html += `<div class="time-axis">`;
+  for(let h=16; h<=20; h++){
+    const r = rowOf(h + ':00');
+    html += `<div class="time-label" style="grid-row:${r}">${h}:00</div>`;
+  }
+  html += `</div>`;
+
+  // day columns
+  days.forEach(day => {
+    html += `<div class="day-col">`;
+    visibleActivities().filter(a => a.day === day).forEach(a => {
+      const rs = rowOf(a.start);
+      const re = rowOf(a.end);
+      let colStyle = 'grid-column:1 / 3';
+      if(a.col === 1) colStyle = 'grid-column:1 / 2';
+      if(a.col === 2) colStyle = 'grid-column:2 / 3';
+      html += `<div class="block ${kidClass[a.kid]} ${a.shared?'shared':''}" style="grid-row:${rs} / ${re}; ${colStyle}">
+        <span class="kid">${a.kid}</span>
+        <span class="act">${a.act}</span>
+        <span class="time">${a.start}–${a.end}</span>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+
+  wrap.innerHTML = html;
+
+  // give day columns + time axis their own row grid for precise time positioning
+  wrap.querySelectorAll('.day-col').forEach(col => {
+    col.style.display = 'grid';
+    col.style.gridTemplateColumns = '1fr 1fr';
+    col.style.gridTemplateRows = `repeat(${TOTAL_ROWS}, 13px)`;
+  });
+  const axis = wrap.querySelector('.time-axis');
+  axis.style.display = 'grid';
+  axis.style.gridTemplateRows = `repeat(${TOTAL_ROWS}, 13px)`;
+}
+
+// ---------- build day-card list (shared by mobile fallback + agenda view) ----------
+function buildDayCards(containerId){
+  const wrap = document.getElementById(containerId);
+  let html = '';
+  days.forEach(day => {
+    const items = visibleActivities().filter(a => a.day === day)
+                             .sort((a,b) => toMin(a.start) - toMin(b.start));
+    html += `<div class="day-card"><h2>${day}</h2>`;
+    if(items.length === 0){
+      html += `<div class="empty">אין חוגים ביום זה</div>`;
+    } else {
+      items.forEach(a => {
+        html += `<div class="row-item">
+          <span class="bar ${kidClass[a.kid]}"></span>
+          <span class="info"><span class="kid">${a.kid}</span> · <span class="act">${a.act}</span></span>
+          <span class="time">${a.start}–${a.end}</span>
+        </div>`;
+      });
+    }
+    html += `</div>`;
+  });
+  wrap.innerHTML = html;
+}
+
+// ---------- view toggle (weekly grid <-> on-screen agenda) ----------
+function setupViewToggle(){
+  const buttons = document.querySelectorAll('.view-btn');
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      buttons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.body.classList.toggle('show-agenda', btn.dataset.view === 'agenda');
+    });
+  });
+}
+
+// ---------- unscheduled chips ----------
+function buildUnscheduled(){
+  const list = document.getElementById('unscheduledList');
+  const items = visibleUnscheduled();
+  const wrap = document.querySelector('.unscheduled');
+  if(items.length === 0){
+    wrap.style.display = 'none';
+  } else {
+    wrap.style.display = '';
+    list.innerHTML = items.map(u => `<li>${u.kid} — ${u.act}</li>`).join('');
+  }
+}
+
+// ---------- print agenda ----------
+function buildAgenda(){
+  const el = document.getElementById('agendaPrint');
+  const subtitle = activeKid ? activeKid : 'יובל · עופר · נטע · אורי';
+  let html = `<h1>לוח החוגים השבועי</h1><p class="subtitle">${subtitle}</p>`;
+  days.forEach(day => {
+    const items = visibleActivities().filter(a => a.day === day)
+                             .sort((a,b) => toMin(a.start) - toMin(b.start));
+    html += `<div class="agenda-day"><h2>${day}</h2>`;
+    if(items.length === 0){
+      html += `<div class="agenda-empty">אין חוגים</div>`;
+    } else {
+      items.forEach(a => {
+        html += `<div class="agenda-row"><span class="who">${a.kid} — ${a.act}</span><span>${a.start}–${a.end}</span></div>`;
+      });
+    }
+    html += `</div>`;
+  });
+  const unsch = visibleUnscheduled();
+  if(unsch.length > 0){
+    html += `<div class="agenda-unscheduled"><strong>עדיין ללא שעה קבועה:</strong> ${unsch.map(u => `${u.kid} — ${u.act}`).join(' · ')}</div>`;
+  }
+  el.innerHTML = html;
+}
+
+// ---------- kid filter (click a name in the legend) ----------
+function setupKidFilter(){
+  const legend = document.getElementById('legend');
+  const buttons = legend.querySelectorAll('.legend-item');
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const kid = btn.dataset.kid;
+      activeKid = (activeKid === kid) ? null : kid;
+
+      legend.classList.toggle('filtered', !!activeKid);
+      buttons.forEach(b => b.classList.toggle('active', b.dataset.kid === activeKid));
+
+      renderAll();
+    });
+  });
+}
+
+function renderAll(){
+  buildGrid();
+  buildDayCards('listWrap');
+  buildDayCards('agendaView');
+  buildUnscheduled();
+  buildAgenda();
+}
+
+renderAll();
+setupViewToggle();
+setupKidFilter();
+</script>
+</body>
+</html>
