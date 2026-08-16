@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Why Swiss Tournaments Can't Always Pick a Winner</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="https://cdn.simplecss.org/simple.min.css" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Why Swiss Tournaments Can't Always Pick a Winner</h1>
+</header>
+<h1
+id="why-swiss-tournaments-cant-always-pick-a-winner-and-the-math-that-explains-it">Why
+Swiss Tournaments Can’t Always Pick a Winner — and the Math That
+Explains It</h1>
+<h2 id="two-titles-no-clear-winner">Two titles, no clear winner</h2>
+<p>In December 2021, the World Rapid Chess Championship in Warsaw ended
+with four players sharing the top score: Nodirbek Abdusattorov, Ian
+Nepomniachtchi, Magnus Carlsen, and Fabiano Caruana all finished at 9.5
+points out of 13. The title went to Abdusattorov — not because he was
+declared the best player on the day, but because he ranked highest on a
+tiebreak called Buchholz Cut 1, which counts the scores of your
+opponents minus your weakest opponent’s score. Carlsen was furious. He
+called the rules “completely idiotic,” arguing that either all four
+players should contest a playoff or none should.</p>
+<p>Three years later, at the 2024 World Blitz Championship in New York,
+Carlsen and Nepomniachtchi finished a head-to-head tiebreak series at
+3.5–3.5. Rather than continue, both players agreed to share the gold
+medal. FIDE’s president approved it on the spot.</p>
+<p>Two world championships, two titles without a clear winner. Were
+these flukes — unfortunate coincidences at the top of elite fields? Or
+is something structural going on?</p>
+<p>It’s structural. And the math makes it predictable.</p>
+<hr />
+<h2 id="swiss-pairing-as-a-sorting-algorithm">Swiss pairing as a sorting
+algorithm</h2>
+<p>Swiss is the dominant tournament format when you can’t run a full
+round-robin. After each round, players are sorted by their current score
+and paired against similarly-ranked opponents they haven’t faced yet.
+The format is widely used in chess, Magic: The Gathering, esports, and
+academic hackathons. Its appeal is efficiency: you get a meaningful
+ranking from O(log n) rounds instead of O(n).</p>
+<p>From an algorithms perspective, Swiss is adaptive comparison sort
+under noise. Each game is a noisy comparison between two players — the
+better player wins <em>most of the time</em>, but not always. The
+question is: how many noisy comparisons do you need before the ranking
+at the top is trustworthy?</p>
+<p>To answer that, I ran a simulation.</p>
+<hr />
+<h2 id="the-model">The model</h2>
+<p>Each player is assigned a true skill drawn from a Gaussian
+distribution. In each game, both players draw a performance sample —
+their skill plus some random noise — and the higher performance wins
+(with a draw band in the middle to model the high draw rates in
+chess).</p>
+<p>The key parameter is the <strong>variance ratio</strong>
+<code>r</code>, defined as the ratio of skill spread to per-game
+noise:</p>
+<pre><code>r = σ_skill / σ_noise</code></pre>
+<p>When <code>r</code> is large, players are clearly distinguishable — a
+strong player almost always beats a weak one. When <code>r</code> is
+small, the field is tightly bunched and games are mostly noise. Think of
+it as the signal-to-noise ratio of the tournament.</p>
+<p>I swept across 7 field sizes (16 to 1024 players) and 5 variance
+ratios (0.25 to 4.0), running 200 independent simulated tournaments per
+configuration. For each tournament, I tracked two things: when the top-3
+players by true skill first appeared in the tournament top-3, and what
+fraction of the true top-3 was correctly identified after any given
+number of rounds.</p>
+<hr />
+<h2 id="finding-1-field-size-barely-matters">Finding 1: field size
+barely matters</h2>
+<p>The first result surprises most people. Doubling the number of
+players adds roughly <strong>2 rounds</strong> to the expected
+convergence time. Going from 64 to 1024 players — a 16× increase — adds
+only about 8 rounds on average.</p>
+<table>
+<thead>
+<tr>
+<th>Field size</th>
+<th>Top-3 convergence rate</th>
+<th>Mean rounds to identify top-3</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>16</td>
+<td>76%</td>
+<td>22.1</td>
+</tr>
+<tr>
+<td>64</td>
+<td>53%</td>
+<td>30.2</td>
+</tr>
+<tr>
+<td>256</td>
+<td>46%</td>
+<td>34.4</td>
+</tr>
+<tr>
+<td>1024</td>
+<td>42%</td>
+<td>37.0</td>
+</tr>
+</tbody>
+</table>
+<p>The effect is real, and it’s logarithmic — consistent with the
+bracket-like structure of Swiss pairing. But it’s modest. If you’ve been
+thinking that bigger tournaments are fundamentally harder to resolve,
+the data says otherwise.</p>
+<hr />
+<h2 id="finding-2-skill-spread-is-everything">Finding 2: skill spread is
+everything</h2>
+<p>What actually drives round counts is the variance ratio. When players
+are tightly bunched in skill, the tournament struggles badly:</p>
+<table>
+<colgroup>
+<col style="width: 22%" />
+<col style="width: 32%" />
+<col style="width: 45%" />
+</colgroup>
+<thead>
+<tr>
+<th>Variance ratio</th>
+<th>Top-3 convergence rate</th>
+<th>Mean rounds to identify top-3</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.25</td>
+<td>10%</td>
+<td>47.7</td>
+</tr>
+<tr>
+<td>0.50</td>
+<td>34%</td>
+<td>41.4</td>
+</tr>
+<tr>
+<td>1.00</td>
+<td>62%</td>
+<td>31.1</td>
+</tr>
+<tr>
+<td>2.00</td>
+<td>80%</td>
+<td>20.3</td>
+</tr>
+<tr>
+<td>4.00</td>
+<td>86%</td>
+<td>15.4</td>
+</tr>
+</tbody>
+</table>
+<p>At <code>r = 0.25</code>, only 10% of simulated tournaments correctly
+identified the true top-3 within 50 rounds. At <code>r = 4.0</code>, 86%
+did. The field size changed little; the variance ratio changed
+everything.</p>
+<p>Fitting the data to a formula gives:</p>
+<pre><code>rounds ≈ 2.20 · log₂(n) + 8.29 / r + 2.93</code></pre>
+<p>with R² = 0.85. The <code>1/r</code> term dominates across the tested
+range. This is the core result: the question isn’t how many players you
+have — it’s how distinguishable they are.</p>
+<hr />
+<h2
+id="finding-3-quality-improves-with-rounds-but-with-diminishing-returns">Finding
+3: quality improves with rounds, but with diminishing returns</h2>
+<p>The convergence framing above asks a binary question: did the
+tournament fully identify the correct top-3? A softer and often more
+useful question is: <em>how good is the ranking after N rounds?</em></p>
+<p>To measure this, I tracked <strong>overlap</strong> — how many of the
+true top-3 players appear in the tournament’s top-3 at each round —
+across a sweep of fixed round counts. At variance ratio = 1.0:</p>
+<table>
+<thead>
+<tr>
+<th>Players</th>
+<th>Mean overlap at 5 rounds</th>
+<th>Mean overlap at 30 rounds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>32</td>
+<td>1.59 / 3 (53%)</td>
+<td>2.30 / 3 (77%)</td>
+</tr>
+<tr>
+<td>128</td>
+<td>1.10 / 3 (36%)</td>
+<td>2.06 / 3 (68%)</td>
+</tr>
+<tr>
+<td>512</td>
+<td>0.79 / 3 (26%)</td>
+<td>1.91 / 3 (64%)</td>
+</tr>
+</tbody>
+</table>
+<p>Quality improves steadily but flattens — a quadratic curve fits much
+better than a straight line, confirming diminishing returns. Each
+additional round helps, but less and less.</p>
+<p>The important implication: when a tournament ends with tied scores at
+the top, it doesn’t mean the format failed. It may simply mean the
+tournament stopped before the ranking had enough information to separate
+players who are genuinely close in strength. At that point, any tiebreak
+system is resolving genuine statistical uncertainty — not noise around a
+clear truth. There may not be a “right” answer.</p>
+<hr />
+<h2 id="connecting-to-reality-estimating-r-from-elo-ratings">Connecting
+to reality: estimating r from Elo ratings</h2>
+<p>So far this is all simulation. To connect it to real chess, we need
+to estimate <code>r</code> for an actual tournament.</p>
+<p>The simulation’s win-probability model is Gaussian. Elo uses a
+logistic curve. These are close enough that we can match them, and the
+result is that the per-game noise implied by the standard Elo scale is
+approximately:</p>
+<pre><code>σ_noise ≈ 223 Elo points</code></pre>
+<p>This is the effective standard deviation of a single game’s outcome,
+in Elo units. Then <code>r</code> is simply:</p>
+<pre><code>r = (standard deviation of field Elo ratings) / 223</code></pre>
+<p>Computable from any published player list.</p>
+<hr />
+<h2 id="the-payoff-warsaw-2021-plugged-in">The payoff: Warsaw 2021
+plugged in</h2>
+<p>The 2021 World Rapid Chess Championship had approximately 150 players
+and ran 13 rounds. The standard deviation of the field’s Elo ratings was
+approximately 146 points.</p>
+<pre><code>r ≈ 146 / 223 ≈ 0.65</code></pre>
+<p>This places the tournament between the <code>r = 0.5</code> and
+<code>r = 1.0</code> rows in the simulation tables. At that ratio, the
+model predicts:</p>
+<ul>
+<li>Top-3 convergence requires <strong>~30–40 rounds on
+average</strong></li>
+<li>Top-1 convergence requires <strong>~18–23 rounds on
+average</strong></li>
+</ul>
+<p>They played 13.</p>
+<p>And there’s a further complication: rapid chess has higher per-game
+variance than classical chess, meaning the Elo scale understates the
+actual noise in a given game. The effective <code>r</code> for rapid is
+probably closer to 0.5 than 0.65. That pushes the required round count
+even higher.</p>
+<p>The four-way tie wasn’t bad luck. The format was running at roughly
+one-third of the round count the math says is needed to reliably
+separate the top-3 players in a field of that composition. Any outcome —
+including the one that happened — was essentially a draw from a highly
+uncertain distribution.</p>
+<p>Worth noting: the organizers had reduced the round count from 15 to
+13 that year, a decision that drew criticism in hindsight. Even 15
+rounds would have been far short of what the model recommends.</p>
+<hr />
+<h2 id="the-tiebreak-debate-reframed">The tiebreak debate reframed</h2>
+<p>Carlsen called Buchholz Cut 1 “completely idiotic.” The defense from
+organizers was that some tiebreak is necessary — you can’t just hand out
+four gold medals. Both positions are reasonable, and both miss the
+point.</p>
+<p>Buchholz, Sonneborn-Berger, head-to-head record, coin flip — these
+are all methods for imposing a ranking on players the tournament hasn’t
+actually separated yet. None of them are “correct” in any deep sense
+when the underlying tournament hasn’t converged. They’re all arbitrary
+in the same way.</p>
+<p>What <em>can</em> be changed is the number of rounds. More rounds
+produce a more reliable ranking, with predictable diminishing returns.
+If you want the top-3 to be reliable for a world championship with an
+elite field, the simulation suggests you need something in the range of
+25–40 rounds, not 13.</p>
+<p>In that light, the 2024 shared title — Carlsen and Nepo agreeing to
+split after an exhausting additional series — is arguably the most
+statistically honest resolution of the two. It acknowledged that the
+games played weren’t sufficient to separate two players who are
+genuinely close in strength.</p>
+<hr />
+<h2 id="takeaway">Takeaway</h2>
+<p>Swiss tournaments are good algorithms. They’re efficient, adaptive,
+and fair in the sense that performance is what determines pairings and
+standings. But no algorithm can extract more signal than the data
+contains.</p>
+<p>When elite players compete in a tightly bunched field, the
+signal-to-noise ratio is inherently low. The tournament needs many more
+rounds than most formats allow to reliably identify the best players.
+This isn’t a fixable formatting choice — it’s a consequence of the
+math.</p>
+<p>For organizers: if you’re running a world championship with elite
+players and you want a clean result, the number of rounds matters far
+more than which tiebreak system you use. The simulation gives a concrete
+formula for estimating how many rounds you actually need.</p>
+<p>For everyone else: the next time a major Swiss tournament ends in
+controversy at the top, consider that the problem may not be the
+tiebreak rules, the players, or the organizers. It may simply be that
+the tournament told us everything it could — and the players at the top
+were genuinely that close.</p>
+</body>
+</html>
