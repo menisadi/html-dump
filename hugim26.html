@@ -26,6 +26,20 @@
   --radius:10px;
 }
 
+:root[data-theme="dark"]{
+  --bg:#1C1B1A;
+  --paper:#252422;
+  --ink:#F2F0EC;
+  --muted:#9A958C;
+  --line:#3A3733;
+  --line-strong:#4A453F;
+
+  --yuval:#7DAFDD;   --yuval-bg:#1E2E3D;
+  --ofer:#E3A868;    --ofer-bg:#3A2A1A;
+  --neta:#D492BC;    --neta-bg:#33232E;
+  --uri:#7FC79E;     --uri-bg:#1C2E24;
+}
+
 *{ box-sizing:border-box; }
 
 html, body{
@@ -116,24 +130,6 @@ h1{
 .dot.neta{ background:var(--neta); }
 .dot.uri{ background:var(--uri); }
 
-.shared-note{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  font-size:12.5px;
-  color:var(--muted);
-  margin-top:14px;
-}
-
-.shared-swatch{
-  width:22px;
-  height:14px;
-  border-radius:4px;
-  border:1px solid var(--line-strong);
-  background:repeating-linear-gradient(45deg, #cfcac0 0 4px, #ffffff 4px 8px);
-  flex-shrink:0;
-}
-
 /* ---------- View toggle ---------- */
 .view-toggle{
   display:inline-flex;
@@ -166,6 +162,34 @@ h1{
 }
 
 .view-btn:focus-visible{ outline:2px solid var(--yuval); outline-offset:2px; }
+
+/* ---------- Toolbar / theme toggle ---------- */
+.toolbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:18px;
+}
+
+.toolbar .view-toggle{ margin-bottom:0; }
+
+.theme-toggle{
+  font-size:16px;
+  line-height:1;
+  background:var(--paper);
+  border:1px solid var(--line);
+  border-radius:50%;
+  width:38px;
+  height:38px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  transition:background 0.15s ease, border-color 0.15s ease;
+}
+
+.theme-toggle:hover{ border-color:var(--line-strong); }
+.theme-toggle:focus-visible{ outline:2px solid var(--yuval); outline-offset:2px; }
 
 /* ---------- Agenda view (on-screen) ---------- */
 .agenda-view{
@@ -468,10 +492,6 @@ body.show-agenda .agenda-view{ display:flex; }
     <div>
       <h1>לוח החוגים השבועי</h1>
       <p class="subtitle">יובל · עופר · נטע · אורי</p>
-      <div class="shared-note">
-        <span class="shared-swatch"></span>
-        <span>קפוארה — חוג משותף לכל הילדים</span>
-      </div>
     </div>
     <div class="legend" id="legend">
       <button type="button" class="legend-item" data-kid="יובל"><span class="dot yuval"></span>יובל</button>
@@ -481,9 +501,12 @@ body.show-agenda .agenda-view{ display:flex; }
     </div>
   </header>
 
-  <div class="view-toggle no-print">
-    <button type="button" class="view-btn active" data-view="week">תצוגה שבועית</button>
-    <button type="button" class="view-btn" data-view="agenda">תצוגת אג׳נדה</button>
+  <div class="toolbar no-print">
+    <div class="view-toggle">
+      <button type="button" class="view-btn active" data-view="week">תצוגה שבועית</button>
+      <button type="button" class="view-btn" data-view="agenda">תצוגת אג׳נדה</button>
+    </div>
+    <button type="button" class="theme-toggle" id="themeToggle" aria-label="החלף בין מצב בהיר לכהה">🌙</button>
   </div>
 
   <div class="week-view">
@@ -710,9 +733,31 @@ function renderAll(){
   buildAgenda();
 }
 
+// ---------- theme toggle (dark/light) ----------
+function setupThemeToggle(){
+  const btn = document.getElementById('themeToggle');
+  const root = document.documentElement;
+
+  function applyTheme(theme){
+    root.setAttribute('data-theme', theme);
+    btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+  }
+
+  const stored = localStorage.getItem('theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme(stored || (prefersDark ? 'dark' : 'light'));
+
+  btn.addEventListener('click', () => {
+    const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    applyTheme(next);
+    localStorage.setItem('theme', next);
+  });
+}
+
 renderAll();
 setupViewToggle();
 setupKidFilter();
+setupThemeToggle();
 </script>
 </body>
 </html>
