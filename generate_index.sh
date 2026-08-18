@@ -43,7 +43,7 @@ HEAD
   else
     for f in "${files[@]}"; do
       mod=$(date -r "$f" "+%Y-%m-%d")
-      printf '<li><a href="%s">%s</a><span class="date">%s</span></li>\n' "$f" "$f" "$mod"
+      printf '<li><a href="%s">%s</a><span class="date">%s</span></li>\n' "$f" "${f%.html}" "$mod"
     done
   fi
 
