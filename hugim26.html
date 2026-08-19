@@ -201,10 +201,17 @@ h1{
 body.show-agenda .week-view{ display:none; }
 body.show-agenda .agenda-view{ display:flex; }
 
-/* ---------- Grid view (desktop) ---------- */
+/* ---------- Grid view ---------- */
+.grid-scroll{
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+  border-radius:var(--radius);
+}
+
 .grid-wrap{
   display:grid;
-  grid-template-columns: 56px repeat(5, 1fr);
+  grid-template-columns: 56px repeat(5, minmax(108px, 1fr));
+  min-width:600px;
   background:var(--paper);
   border:1px solid var(--line);
   border-radius:var(--radius);
@@ -294,13 +301,6 @@ body.show-agenda .agenda-view{ display:flex; }
   background:repeating-linear-gradient(45deg, currentColor 0 1px, transparent 1px 7px);
   opacity:0.18;
   pointer-events:none;
-}
-
-/* ---------- List view (mobile) ---------- */
-.list-wrap{
-  display:none;
-  flex-direction:column;
-  gap:14px;
 }
 
 .day-card{
@@ -478,8 +478,6 @@ body.show-agenda .agenda-view{ display:flex; }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 760px){
-  .grid-wrap{ display:none; }
-  .list-wrap{ display:flex; }
   header{ flex-direction:column; align-items:flex-start; }
 }
 </style>
@@ -510,11 +508,10 @@ body.show-agenda .agenda-view{ display:flex; }
   </div>
 
   <div class="week-view">
-    <!-- GRID VIEW -->
-    <div class="grid-wrap no-print" id="gridWrap"></div>
-
-    <!-- LIST VIEW (mobile fallback) -->
-    <div class="list-wrap no-print" id="listWrap"></div>
+    <!-- GRID VIEW (scrolls horizontally on narrow screens) -->
+    <div class="grid-scroll no-print">
+      <div class="grid-wrap" id="gridWrap"></div>
+    </div>
   </div>
 
   <!-- AGENDA VIEW (on-screen, toggle-able) -->
@@ -728,7 +725,6 @@ function setupKidFilter(){
 
 function renderAll(){
   buildGrid();
-  buildDayCards('listWrap');
   buildDayCards('agendaView');
   buildUnscheduled();
   buildAgenda();
