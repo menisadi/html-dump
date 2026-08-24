@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Compound Savings — Exact vs. Rule of Thumb</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -157,6 +158,14 @@
     color:var(--paper);
   }
   footer .gap{margin-top:8px;}
+
+  @media (max-width:560px){
+    body{padding:20px 12px 48px;}
+    .panel{padding:18px 16px;}
+    .results{grid-template-columns:1fr;}
+    .deposited-line{flex-direction:column;align-items:flex-start;gap:4px;}
+    .control-label{flex-direction:column;align-items:flex-start;gap:2px;}
+  }
 </style>
 </head>
 <body>
@@ -254,10 +263,14 @@ function approxFV(s, xPct, years){
   return 12 * s * years * Math.pow(2, n/2);
 }
 
+function chartHeight(){
+  return window.innerWidth <= 560 ? 220 : 320;
+}
+
 function resizeCanvas(){
   const ratio = window.devicePixelRatio || 1;
   const w = canvas.clientWidth;
-  const h = 320;
+  const h = chartHeight();
   canvas.width = w * ratio;
   canvas.height = h * ratio;
   ctx.setTransform(ratio,0,0,ratio,0,0);
@@ -298,7 +311,7 @@ function draw(){
   }
 
   const w = canvas.clientWidth;
-  const h = 320;
+  const h = chartHeight();
   const padL = 60, padR = 16, padT = 16, padB = 30;
   const plotW = w - padL - padR;
   const plotH = h - padT - padB;
