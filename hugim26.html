@@ -546,6 +546,7 @@ const activities = [
   { day:'שני',    kid:'יובל', act:'כדורגל',         start:'16:00', end:'17:15' },
   { day:'שני',    kid:'אורי', act:'פיתוח קול',      start:'16:30', end:'17:15' },
 
+  { day:'שלישי',  kid:'נטע',  act:'כינור',          start:'13:00', end:'13:45' },
   { day:'שלישי',  kid:'אורי', act:'חרבות וכשפים',  start:'16:45', end:'18:15' },
 
   { day:'רביעי',  kid:'יובל', act:'קפוארה',        start:'16:15', end:'17:00', shared:true, col:1 },
@@ -557,7 +558,6 @@ const activities = [
 
 const unscheduled = [
   { kid:'אורי', act:'חליל צד' },
-  { kid:'נטע',  act:'כינור' },
 ];
 
 // ---------- filter state ----------
@@ -572,9 +572,9 @@ function visibleUnscheduled(){
 }
 
 // ---------- time helpers ----------
-const DAY_START = 16*60; // 16:00
+const DAY_START = 13*60; // 13:00
 const ROW_MIN = 5;
-const TOTAL_ROWS = (20*60 - DAY_START) / ROW_MIN; // 48 rows, until 20:00
+const TOTAL_ROWS = (20*60 - DAY_START) / ROW_MIN; // 84 rows, until 20:00
 
 function toMin(t){
   const [h,m] = t.split(':').map(Number);
@@ -595,7 +595,7 @@ function buildGrid(){
 
   // time axis
   html += `<div class="time-axis">`;
-  for(let h=16; h<=20; h++){
+  for(let h=13; h<=20; h++){
     const r = rowOf(h + ':00');
     html += `<div class="time-label" style="grid-row:${r}">${h}:00</div>`;
   }
