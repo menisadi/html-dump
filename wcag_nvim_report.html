@@ -51,33 +51,48 @@ body {
 .wrap { max-width: 1080px; margin: 0 auto; padding: 40px 24px 80px; }
 h1 { font-size: 1.7rem; margin-bottom: 4px; }
 .subtitle { color: var(--muted); margin-top: 0; margin-bottom: 28px; font-size: 0.95rem; }
-.note {
+/* Collapsible panels (Contents, How to read this). Open by default; the
+   summary row stays the same height whether open or closed. */
+.panel-collapse {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 14px 18px;
   color: var(--muted);
-  font-size: 0.88rem;
-  margin-bottom: 32px;
-}
-.note strong { color: var(--text); }
-.note code { font-family: var(--mono); background: var(--bg); padding: 1px 5px; border-radius: 4px; }
-.toc {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 16px 20px;
   margin-bottom: 28px;
-  font-size: 0.85rem;
 }
-.toc > strong {
-  display: block;
-  margin-bottom: 10px;
+.panel-collapse > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 12px 18px;
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   color: var(--muted);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 10px;
 }
+.panel-collapse > summary::-webkit-details-marker { display: none; }
+.panel-collapse > summary::before {
+  content: "▸";
+  font-size: 0.8rem;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+.panel-collapse[open] > summary::before { transform: rotate(90deg); }
+.panel-collapse > summary:hover { color: var(--text); }
+.panel-collapse[open] > summary {
+  border-bottom: 1px solid var(--border);
+  border-radius: 10px 10px 0 0;
+}
+.panel-collapse > .panel-body { padding: 14px 18px; }
+.note { font-size: 0.88rem; }
+.note strong { color: var(--text); }
+.note code { font-family: var(--mono); background: var(--bg); padding: 1px 5px; border-radius: 4px; }
+.note a { color: var(--accent); }
+.toc { font-size: 0.85rem; }
 .toc-section { margin-bottom: 10px; }
 .toc-section:last-child { margin-bottom: 0; }
 .toc-section > a { font-weight: 600; color: var(--text); text-decoration: none; }
@@ -181,22 +196,26 @@ footer { color: var(--muted); font-size: 0.8rem; margin-top: 40px; text-align: c
   <p class="subtitle">12 popular Neovim colorschemes plus Neovim's own built-in default, audited with <code>wcag-nvim</code> · generated 2026-09-03</p>
 
   
-<nav class="toc">
-  <strong>Contents</strong>
-  <div class="toc-section"><a href="#overall-ranking">Overall ranking</a></div>
-  <div class="toc-section">
-    <a href="#summary">Summary</a>
-    <ul class="toc-repos"><li><a href="#summary-catppuccin_nvim">catppuccin/nvim</a></li><li><a href="#summary-folke_tokyonight-nvim">folke/tokyonight.nvim</a></li><li><a href="#summary-rebelot_kanagawa-nvim">rebelot/kanagawa.nvim</a></li><li><a href="#summary-rose-pine_neovim">rose-pine/neovim</a></li><li><a href="#summary-EdenEast_nightfox-nvim">EdenEast/nightfox.nvim</a></li><li><a href="#summary-navarasu_onedark-nvim">navarasu/onedark.nvim</a></li><li><a href="#summary-sainnhe_gruvbox-material">sainnhe/gruvbox-material</a></li><li><a href="#summary-projekt0n_github-nvim-theme">projekt0n/github-nvim-theme</a></li><li><a href="#summary-sainnhe_everforest">sainnhe/everforest</a></li><li><a href="#summary-scottmckendry_cyberdream-nvim">scottmckendry/cyberdream.nvim</a></li><li><a href="#summary-Mofiqul_dracula-nvim">Mofiqul/dracula.nvim</a></li><li><a href="#summary-zenbones-theme_zenbones-nvim">zenbones-theme/zenbones.nvim</a></li><li><a href="#summary-neovim_default">neovim (built-in default)</a></li></ul>
-  </div>
-  <div class="toc-section">
-    <a href="#full-reports">Full reports</a>
-    <ul class="toc-repos"><li><a href="#detail-catppuccin_nvim">catppuccin/nvim</a></li><li><a href="#detail-folke_tokyonight-nvim">folke/tokyonight.nvim</a></li><li><a href="#detail-rebelot_kanagawa-nvim">rebelot/kanagawa.nvim</a></li><li><a href="#detail-rose-pine_neovim">rose-pine/neovim</a></li><li><a href="#detail-EdenEast_nightfox-nvim">EdenEast/nightfox.nvim</a></li><li><a href="#detail-navarasu_onedark-nvim">navarasu/onedark.nvim</a></li><li><a href="#detail-sainnhe_gruvbox-material">sainnhe/gruvbox-material</a></li><li><a href="#detail-projekt0n_github-nvim-theme">projekt0n/github-nvim-theme</a></li><li><a href="#detail-sainnhe_everforest">sainnhe/everforest</a></li><li><a href="#detail-scottmckendry_cyberdream-nvim">scottmckendry/cyberdream.nvim</a></li><li><a href="#detail-Mofiqul_dracula-nvim">Mofiqul/dracula.nvim</a></li><li><a href="#detail-zenbones-theme_zenbones-nvim">zenbones-theme/zenbones.nvim</a></li><li><a href="#detail-neovim_default">neovim (built-in default)</a></li></ul>
-  </div>
-</nav>
+<details class="toc panel-collapse" open>
+  <summary>Contents</summary>
+  <nav class="panel-body">
+    <div class="toc-section"><a href="#overall-ranking">Overall ranking</a></div>
+    <div class="toc-section">
+      <a href="#summary">Summary</a>
+      <ul class="toc-repos"><li><a href="#summary-catppuccin_nvim">catppuccin/nvim</a></li><li><a href="#summary-folke_tokyonight-nvim">folke/tokyonight.nvim</a></li><li><a href="#summary-rebelot_kanagawa-nvim">rebelot/kanagawa.nvim</a></li><li><a href="#summary-rose-pine_neovim">rose-pine/neovim</a></li><li><a href="#summary-EdenEast_nightfox-nvim">EdenEast/nightfox.nvim</a></li><li><a href="#summary-navarasu_onedark-nvim">navarasu/onedark.nvim</a></li><li><a href="#summary-sainnhe_gruvbox-material">sainnhe/gruvbox-material</a></li><li><a href="#summary-projekt0n_github-nvim-theme">projekt0n/github-nvim-theme</a></li><li><a href="#summary-sainnhe_everforest">sainnhe/everforest</a></li><li><a href="#summary-scottmckendry_cyberdream-nvim">scottmckendry/cyberdream.nvim</a></li><li><a href="#summary-Mofiqul_dracula-nvim">Mofiqul/dracula.nvim</a></li><li><a href="#summary-zenbones-theme_zenbones-nvim">zenbones-theme/zenbones.nvim</a></li><li><a href="#summary-neovim_default">neovim (built-in default)</a></li></ul>
+    </div>
+    <div class="toc-section">
+      <a href="#full-reports">Full reports</a>
+      <ul class="toc-repos"><li><a href="#detail-catppuccin_nvim">catppuccin/nvim</a></li><li><a href="#detail-folke_tokyonight-nvim">folke/tokyonight.nvim</a></li><li><a href="#detail-rebelot_kanagawa-nvim">rebelot/kanagawa.nvim</a></li><li><a href="#detail-rose-pine_neovim">rose-pine/neovim</a></li><li><a href="#detail-EdenEast_nightfox-nvim">EdenEast/nightfox.nvim</a></li><li><a href="#detail-navarasu_onedark-nvim">navarasu/onedark.nvim</a></li><li><a href="#detail-sainnhe_gruvbox-material">sainnhe/gruvbox-material</a></li><li><a href="#detail-projekt0n_github-nvim-theme">projekt0n/github-nvim-theme</a></li><li><a href="#detail-sainnhe_everforest">sainnhe/everforest</a></li><li><a href="#detail-scottmckendry_cyberdream-nvim">scottmckendry/cyberdream.nvim</a></li><li><a href="#detail-Mofiqul_dracula-nvim">Mofiqul/dracula.nvim</a></li><li><a href="#detail-zenbones-theme_zenbones-nvim">zenbones-theme/zenbones.nvim</a></li><li><a href="#detail-neovim_default">neovim (built-in default)</a></li></ul>
+    </div>
+  </nav>
+</details>
 
 
-  <div class="note">
-    <strong>How to read this.</strong> The <strong>score</strong> column is wcag-nvim's headline number: a
+  <details class="note panel-collapse" open>
+    <summary>How to read this</summary>
+    <div class="panel-body">
+    The <strong>score</strong> column is wcag-nvim's headline number: a
     weighted APCA shortfall (content 60% · ui 25% · secondary 15%), aggregated per tier so it doesn't depend on
     how many groups a scheme defines. Tinted surfaces like CursorLine and Visual are audited but excluded from
     the score, since those are design choices rather than defects. Bands are relative to real-world schemes,
@@ -241,7 +260,8 @@ footer { color: var(--muted); font-size: 0.8rem; margin-top: 40px; text-align: c
     group shifts with the flag even though the buffer background itself doesn't. The raw per-variant reports
     further down are wcag-nvim's untouched output, so their <code>background=</code> headers still show the
     requested flag, not this corrected label.
-  </div>
+    </div>
+  </details>
 
   <div class="legend">
     <span><span class="swatch" style="background:var(--band-weak-bg)"></span>score: weak</span>
