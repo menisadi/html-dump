@@ -120,6 +120,29 @@ td.score-cell { display: table-cell; padding: 6px 10px; }
 tbody tr:not(:last-child) td { border-bottom: 1px solid var(--border); }
 .legend { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 24px; font-size: 0.82rem; color: var(--muted); }
 .legend span.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: middle; }
+.toc {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 28px;
+  font-size: 0.88rem;
+}
+.toc summary { cursor: pointer; font-weight: 600; color: var(--text); }
+.toc summary::marker { color: var(--muted); }
+.toc > ol { margin: 12px 0 0; padding-left: 1.2em; }
+.toc > ol > li { margin-bottom: 8px; }
+.toc-repos {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 3px 16px;
+  margin: 8px 0 0;
+  padding-left: 0;
+}
+.toc-repos li { margin: 0; font-family: var(--mono); font-size: 0.82rem; }
+.toc a { color: var(--text); text-decoration: none; }
+.toc a:hover { color: var(--accent); }
 .repo-detail { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 4px 4px; margin-bottom: 16px; }
 .repo-detail h3 { padding: 14px 18px 0; }
 pre.report {
@@ -186,7 +209,31 @@ footer { color: var(--muted); font-size: 0.8rem; margin-top: 40px; text-align: c
     <span><span class="swatch" style="background:var(--bad-bg)"></span>&lt;60%</span>
   </div>
 
-  <h2>Overall ranking</h2>
+  <details class="toc" open>
+    <summary>Contents</summary>
+    <ol>
+      <li><a href="#overall-ranking">Overall ranking</a></li>
+      <li><a href="#summary">Summary</a>
+        <ol class="toc-repos">
+          <li><a href="#detail-catppuccin_nvim">catppuccin/nvim</a></li>
+          <li><a href="#detail-folke_tokyonight-nvim">folke/tokyonight.nvim</a></li>
+          <li><a href="#detail-rebelot_kanagawa-nvim">rebelot/kanagawa.nvim</a></li>
+          <li><a href="#detail-rose-pine_neovim">rose-pine/neovim</a></li>
+          <li><a href="#detail-EdenEast_nightfox-nvim">EdenEast/nightfox.nvim</a></li>
+          <li><a href="#detail-navarasu_onedark-nvim">navarasu/onedark.nvim</a></li>
+          <li><a href="#detail-sainnhe_gruvbox-material">sainnhe/gruvbox-material</a></li>
+          <li><a href="#detail-projekt0n_github-nvim-theme">projekt0n/github-nvim-theme</a></li>
+          <li><a href="#detail-sainnhe_everforest">sainnhe/everforest</a></li>
+          <li><a href="#detail-scottmckendry_cyberdream-nvim">scottmckendry/cyberdream.nvim</a></li>
+          <li><a href="#detail-Mofiqul_dracula-nvim">Mofiqul/dracula.nvim</a></li>
+          <li><a href="#detail-zenbones-theme_zenbones-nvim">zenbones-theme/zenbones.nvim</a></li>
+        </ol>
+      </li>
+      <li><a href="#full-reports">Full reports</a></li>
+    </ol>
+  </details>
+
+  <h2 id="overall-ranking">Overall ranking</h2>
   <p class="subtitle" style="margin-bottom:14px;">Ranked by mean headline score. Switch between repo averages and individual variants, and restrict to a background.</p>
   <div class="lb-controls">
     <div class="segmented" id="lb-mode">
@@ -276,7 +323,7 @@ footer { color: var(--muted); font-size: 0.8rem; margin-top: 40px; text-align: c
     })();
   </script>
 
-  <h2>Summary</h2>
+  <h2 id="summary">Summary</h2>
   
     <section class="repo-summary">
       <h3><a href="https://github.com/catppuccin/nvim" target="_blank" rel="noopener">catppuccin/nvim</a>
@@ -471,7 +518,7 @@ footer { color: var(--muted); font-size: 0.8rem; margin-top: 40px; text-align: c
     </section>
     
 
-  <h2>Full reports</h2>
+  <h2 id="full-reports">Full reports</h2>
   
     <section class="repo-detail" id="detail-catppuccin_nvim">
       <h3><a href="https://github.com/catppuccin/nvim" target="_blank" rel="noopener">catppuccin/nvim</a></h3>
