@@ -146,12 +146,13 @@
   line.dynamic-line {
     stroke-width: 2.2;
     stroke-linecap: round;
-    opacity: 0.85;
+    stroke-dasharray: 6 4;
+    opacity: 0.5;
     transition: opacity 0.25s ease, stroke 0.25s ease;
   }
   line.dynamic-line:hover {
     stroke-width: 4px;
-    opacity: 1;
+    opacity: 0.85;
   }
   g.node-group {
     cursor: pointer;
