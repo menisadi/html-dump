@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Israel Transport Homunculus — Dynamic Hover Network Map</title>
+<title>Israel Transport Homunculus — Global & Radial Travel-Time Lens</title>
 <style>
   :root {
     --bg: #0f172a;
@@ -86,6 +86,28 @@
   select#modeSelect:hover {
     border-color: #7dd3fc;
   }
+  .view-mode-tabs {
+    display: flex;
+    background: #0b1120;
+    padding: 3px;
+    border-radius: 8px;
+    border: 1px solid #334155;
+  }
+  .view-tab {
+    padding: 6px 14px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    border-radius: 6px;
+    cursor: pointer;
+    border: none;
+    background: none;
+    transition: all 0.2s;
+  }
+  .view-tab.active {
+    background: var(--accent);
+    color: #0f172a;
+  }
   .toggles-group {
     display: flex;
     flex-wrap: wrap;
@@ -153,6 +175,21 @@
   line.dynamic-line:hover {
     stroke-width: 4px;
     opacity: 0.85;
+  }
+  circle.isochrone-ring {
+    fill: none;
+    stroke: #38bdf8;
+    stroke-width: 1;
+    stroke-dasharray: 4 4;
+    opacity: 0.25;
+    pointer-events: none;
+  }
+  text.isochrone-label {
+    font-size: 10px;
+    fill: #38bdf8;
+    opacity: 0.6;
+    font-weight: 600;
+    pointer-events: none;
   }
   g.node-group {
     cursor: pointer;
@@ -308,12 +345,12 @@
 
 <header>
   <h1>Israel Transport Homunculus (21 Cities & Towns)</h1>
-  <p class="subtitle">Interactive Travel-Time Cartogram — Click Any City to Dynamically Reveal Its Pairwise Connection Radii</p>
+  <p class="subtitle">Global 2D Compromise vs. Exact Egocentric Radial Isochrone Lens</p>
 </header>
 
 <div class="controls-bar">
   <div class="dropdown-group">
-    <label for="modeSelect" class="dropdown-label">Select Spatial Version:</label>
+    <label for="modeSelect" class="dropdown-label">Layer:</label>
     <select id="modeSelect">
       <option value="geo">1. Physical Geography (True Baseline)</option>
       <option value="car3">2. Car at 3:00 AM (Free-Flow Night)</option>
@@ -321,11 +358,18 @@
       <option value="transit" selected>4. Public Transit at 8:00 AM (Morning Peak Corridors)</option>
     </select>
   </div>
+
+  <!-- Projection Paradigm Selector -->
+  <div class="view-mode-tabs">
+    <button id="tabGlobal" class="view-tab active" onclick="setViewMode('global')">🌐 Global Consensus Map</button>
+    <button id="tabRadial" class="view-tab" onclick="setViewMode('radial')">🎯 Radial Lens (Exact Distance = Time)</button>
+  </div>
+
   <div class="toggles-group">
     <label><input type="checkbox" id="toggleBorder" checked> Country Border</label>
     <label><input type="checkbox" id="toggleDynamicLines" checked> Show Lines on Select</label>
-    <label><input type="checkbox" id="toggleAllLines"> Show All Connection Grid</label>
-    <label><input type="checkbox" id="toggleLabels" checked> City Labels</label>
+    <label><input type="checkbox" id="toggleAllLines"> Full Grid</label>
+    <label><input type="checkbox" id="toggleLabels" checked> Labels</label>
   </div>
 </div>
 
@@ -336,10 +380,13 @@
       <!-- Border polygon -->
       <polygon id="borderPoly" class="country-border" points=""></polygon>
       
-      <!-- Static edges (shown only if toggleAllLines is checked) -->
+      <!-- Static edges -->
       <g id="allEdgesGroup" style="display: none;"></g>
 
-      <!-- Dynamic lines radiating from hovered/selected node -->
+      <!-- Isochrone Rings for Radial Mode -->
+      <g id="isochronesGroup" style="display: none;"></g>
+
+      <!-- Dynamic lines radiating from active node -->
       <g id="dynamicLinesGroup"></g>
       
       <!-- Nodes group (dots + labels) -->
@@ -352,7 +399,7 @@
       <div class="legend-item"><div class="line-sample" style="background:#34d399;"></div> Medium (60–85 km/h)</div>
       <div class="legend-item"><div class="line-sample" style="background:#f87171;"></div> Slow (&lt;60 km/h)</div>
     </div>
-    <div class="hint-text">👉 Click any city to project all 20 direct routes from it. Click it again to hide the lines.</div>
+    <div class="hint-text" id="hintBanner">👉 Click any city to project all 20 direct routes from it and set it as center. Click it again to hide the lines.</div>
   </div>
 
   <!-- Info Panel -->
@@ -365,7 +412,7 @@
       </div>
       <p id="projDesc" style="font-size: 13px; color: #cbd5e1; margin-top: 4px;"></p>
       <div class="callout" id="projCallout">
-        <strong>Direct Corridor Highlights:</strong> Tel Aviv ⇄ Be'er Sheva takes <strong>61 min</strong> by train (108 km/h), but <strong>135 min</strong> driving at 8 AM. Click either city to highlight this line directly.
+        <!-- Live explanation -->
       </div>
     </div>
 
@@ -425,14 +472,30 @@
 const data = {"nodes": [{"id": 0, "name": "Metula", "nameHe": "\u05de\u05d8\u05d5\u05dc\u05d4", "type": "Small Town", "region": "Galilee Panhandle", "avgGeoDist": 156.2, "avgCar3am": 132.2, "avgCar8am": 141.6, "avgTransit": 204.6, "transitMinPerKm": 1.31, "rushHourPenalty": 7.2}, {"id": 1, "name": "Kiryat Shmona", "nameHe": "\u05e7\u05e8\u05d9\u05d9\u05ea \u05e9\u05de\u05d5\u05e0\u05d4", "type": "Regional Hub", "region": "Upper Galilee", "avgGeoDist": 149.3, "avgCar3am": 127.4, "avgCar8am": 137.2, "avgTransit": 183.8, "transitMinPerKm": 1.23, "rushHourPenalty": 7.7}, {"id": 2, "name": "Tzfat", "nameHe": "\u05e6\u05e4\u05ea", "type": "Mountain City", "region": "Upper Galilee Mountains", "avgGeoDist": 127.8, "avgCar3am": 157.6, "avgCar8am": 167.3, "avgTransit": 184.2, "transitMinPerKm": 1.44, "rushHourPenalty": 6.2}, {"id": 3, "name": "Katsrin", "nameHe": "\u05e7\u05e6\u05e8\u05d9\u05df", "type": "Small Town", "region": "Golan Heights", "avgGeoDist": 136.6, "avgCar3am": 148.1, "avgCar8am": 157.6, "avgTransit": 198.2, "transitMinPerKm": 1.45, "rushHourPenalty": 6.4}, {"id": 4, "name": "Beit Jann", "nameHe": "\u05d1\u05d9\u05ea \u05d2'\u05df", "type": "Mountain Village", "region": "Upper Galilee (Meron)", "avgGeoDist": 126.2, "avgCar3am": 154.8, "avgCar8am": 163.8, "avgTransit": 183.9, "transitMinPerKm": 1.46, "rushHourPenalty": 5.8}, {"id": 5, "name": "Haifa", "nameHe": "\u05d7\u05d9\u05e4\u05d4", "type": "Metropolis", "region": "North Coast", "avgGeoDist": 119.1, "avgCar3am": 103.4, "avgCar8am": 123.8, "avgTransit": 145.7, "transitMinPerKm": 1.22, "rushHourPenalty": 19.8}, {"id": 6, "name": "Tiberias", "nameHe": "\u05d8\u05d1\u05e8\u05d9\u05d4", "type": "Regional City", "region": "Sea of Galilee", "avgGeoDist": 119.7, "avgCar3am": 102.2, "avgCar8am": 111.7, "avgTransit": 153.0, "transitMinPerKm": 1.28, "rushHourPenalty": 9.3}, {"id": 7, "name": "Beit She'an", "nameHe": "\u05d1\u05d9\u05ea \u05e9\u05d0\u05df", "type": "Small Town", "region": "Jordan Valley", "avgGeoDist": 109.3, "avgCar3am": 94.2, "avgCar8am": 103.0, "avgTransit": 155.1, "transitMinPerKm": 1.42, "rushHourPenalty": 9.3}, {"id": 8, "name": "Hadera", "nameHe": "\u05d7\u05d3\u05e8\u05d4", "type": "Regional City", "region": "Northern Sharon", "avgGeoDist": 104.0, "avgCar3am": 91.2, "avgCar8am": 98.2, "avgTransit": 135.5, "transitMinPerKm": 1.3, "rushHourPenalty": 7.7}, {"id": 9, "name": "Herzliya", "nameHe": "\u05d4\u05e8\u05e6\u05dc\u05d9\u05d4", "type": "Metropolis Suburb", "region": "Sharon / Gush Dan North", "avgGeoDist": 99.1, "avgCar3am": 88.2, "avgCar8am": 128.0, "avgTransit": 130.2, "transitMinPerKm": 1.31, "rushHourPenalty": 45.0}, {"id": 10, "name": "Tel Aviv", "nameHe": "\u05ea\u05dc \u05d0\u05d1\u05d9\u05d1", "type": "Metropolis", "region": "Gush Dan / Center", "avgGeoDist": 99.9, "avgCar3am": 87.2, "avgCar8am": 128.8, "avgTransit": 111.6, "transitMinPerKm": 1.12, "rushHourPenalty": 47.8}, {"id": 11, "name": "Rishon LeZion", "nameHe": "\u05e8\u05d0\u05e9\u05d5\u05df \u05dc\u05e6\u05d9\u05d5\u05df", "type": "Metropolis Suburb", "region": "Gush Dan South", "avgGeoDist": 99.8, "avgCar3am": 89.8, "avgCar8am": 130.8, "avgTransit": 133.2, "transitMinPerKm": 1.33, "rushHourPenalty": 45.8}, {"id": 12, "name": "Jerusalem", "nameHe": "\u05d9\u05e8\u05d5\u05e9\u05dc\u05d9\u05dd", "type": "Metropolis", "region": "Judean Hills", "avgGeoDist": 102.7, "avgCar3am": 93.2, "avgCar8am": 124.8, "avgTransit": 135.0, "transitMinPerKm": 1.31, "rushHourPenalty": 33.8}, {"id": 13, "name": "Ashdod", "nameHe": "\u05d0\u05e9\u05d3\u05d5\u05d3", "type": "Regional City", "region": "Southern Coastal Plain", "avgGeoDist": 107.4, "avgCar3am": 97.8, "avgCar8am": 104.9, "avgTransit": 140.6, "transitMinPerKm": 1.31, "rushHourPenalty": 7.3}, {"id": 14, "name": "Ein Gedi", "nameHe": "\u05e2\u05d9\u05df \u05d2\u05d3\u05d9", "type": "Kibbutz / Oasis", "region": "Dead Sea Depression", "avgGeoDist": 119.1, "avgCar3am": 149.2, "avgCar8am": 157.5, "avgTransit": 176.6, "transitMinPerKm": 1.48, "rushHourPenalty": 5.5}, {"id": 15, "name": "Sderot", "nameHe": "\u05e9\u05d3\u05e8\u05d5\u05ea", "type": "Regional Town", "region": "Western Negev", "avgGeoDist": 119.3, "avgCar3am": 108.7, "avgCar8am": 117.2, "avgTransit": 153.5, "transitMinPerKm": 1.29, "rushHourPenalty": 7.8}, {"id": 16, "name": "Arad", "nameHe": "\u05e2\u05e8\u05d3", "type": "Small Town", "region": "Eastern Negev", "avgGeoDist": 126.0, "avgCar3am": 114.2, "avgCar8am": 123.2, "avgTransit": 175.0, "transitMinPerKm": 1.39, "rushHourPenalty": 7.9}, {"id": 17, "name": "Be'er Sheva", "nameHe": "\u05d1\u05d0\u05e8 \u05e9\u05d1\u05e2", "type": "Metropolis", "region": "Northern Negev", "avgGeoDist": 127.9, "avgCar3am": 116.4, "avgCar8am": 128.6, "avgTransit": 155.5, "transitMinPerKm": 1.22, "rushHourPenalty": 10.5}, {"id": 18, "name": "Yeruham", "nameHe": "\u05d9\u05e8\u05d5\u05d7\u05dd", "type": "Small Town", "region": "Central Negev", "avgGeoDist": 145.2, "avgCar3am": 132.8, "avgCar8am": 142.8, "avgTransit": 194.0, "transitMinPerKm": 1.34, "rushHourPenalty": 7.5}, {"id": 19, "name": "Mitzpe Ramon", "nameHe": "\u05de\u05e6\u05e4\u05d4 \u05e8\u05de\u05d5\u05df", "type": "Small Town", "region": "Negev Highlands", "avgGeoDist": 180.9, "avgCar3am": 164.0, "avgCar8am": 174.8, "avgTransit": 234.1, "transitMinPerKm": 1.29, "rushHourPenalty": 6.6}, {"id": 20, "name": "Eilat", "nameHe": "\u05d0\u05d9\u05dc\u05ea", "type": "Regional City", "region": "Far South / Red Sea", "avgGeoDist": 288.9, "avgCar3am": 257.6, "avgCar8am": 268.4, "avgTransit": 339.4, "transitMinPerKm": 1.17, "rushHourPenalty": 4.2}], "edges": [[0, 1], [1, 2], [1, 3], [2, 4], [4, 5], [2, 6], [3, 6], [6, 7], [5, 8], [8, 9], [9, 10], [10, 11], [10, 12], [11, 13], [12, 14], [13, 15], [15, 17], [12, 17], [14, 16], [17, 16], [17, 18], [18, 19], [19, 20], [17, 20], [10, 17], [5, 10], [5, 12], [10, 14], [10, 20]], "modes": {"geo": {"title": "1. Physical Geography (True Baseline)", "shortTitle": "Physical Geography", "stress": "0.0% (Ground Truth)", "nodes": [[365.4, 52.8], [363.9, 67.3], [350.7, 118.4], [385.4, 112.9], [329.8, 118.3], [260.1, 154.3], [357.0, 153.9], [350.9, 216.6], [247.5, 229.8], [233.9, 286.1], [222.8, 303.1], [224.8, 326.6], [301.7, 367.8], [200.2, 362.0], [330.6, 436.2], [189.6, 420.7], [300.4, 476.1], [223.7, 478.0], [249.6, 533.6], [226.3, 613.0], [253.3, 833.8]], "border": [[280.7, 91.5], [277.1, 110.0], [274.1, 126.1], [256.4, 146.1], [253.0, 161.4], [249.6, 176.3], [242.2, 215.8], [238.6, 234.9], [234.2, 251.9], [229.7, 274.8], [225.8, 285.3], [220.7, 303.1], [217.2, 310.5], [213.6, 325.2], [208.2, 342.0], [197.5, 363.0], [183.1, 390.3], [172.4, 403.9], [172.4, 415.5], [165.2, 430.2], [150.9, 447.0], [142.0, 461.7], [133.5, 483.1], [142.0, 509.9], [154.5, 556.1], [172.4, 604.4], [186.7, 646.4], [199.3, 677.9], [213.6, 724.1], [229.7, 772.4], [238.6, 820.7], [244.0, 848.0], [254.8, 837.5], [258.3, 830.2], [265.5, 793.4], [272.7, 761.9], [279.8, 719.9], [288.8, 665.3], [297.7, 608.6], [312.0, 570.8], [322.8, 541.4], [329.9, 520.4], [330.8, 478.5], [331.7, 436.5], [342.5, 394.5], [351.4, 373.5], [358.6, 348.3], [356.8, 300.0], [355.0, 247.5], [364.0, 216.0], [364.9, 188.7], [365.8, 174.0], [381.0, 177.1], [405.1, 163.5], [408.7, 132.0], [405.1, 106.8], [406.9, 85.8], [405.1, 64.8], [403.3, 52.2], [403.3, 45.9], [364.9, 51.2], [358.6, 61.7], [356.8, 69.0], [353.2, 90.0], [338.9, 94.2], [326.4, 93.2], [313.8, 92.1], [297.7, 94.2], [280.7, 91.5]], "color": "#334155", "description": "Standard geographic baseline. Distances represent true physical kilometers."}, "car3": {"title": "2. Car at 3:00 AM (Free-Flow Night Driving)", "shortTitle": "Car: 3 AM Free-Flow", "stress": "11.7%", "nodes": [[296.9, 90.9], [326.6, 102.1], [356.1, 32.0], [376.7, 65.8], [332.6, 33.5], [254.3, 187.9], [331.8, 167.4], [334.2, 224.7], [263.5, 255.1], [260.9, 307.4], [241.3, 312.9], [253.3, 344.7], [315.6, 374.2], [232.2, 377.4], [418.6, 488.7], [220.4, 430.4], [308.7, 477.9], [243.2, 479.3], [253.7, 530.2], [202.7, 593.9], [144.3, 784.9]], "border": [[265.7, 90.6], [268.1, 106.4], [269.4, 122.4], [258.0, 151.5], [257.4, 170.1], [256.2, 188.6], [253.5, 236.4], [252.2, 258.1], [250.0, 276.5], [248.8, 299.0], [246.7, 308.8], [244.5, 324.5], [242.2, 330.8], [240.5, 343.0], [237.1, 356.7], [227.9, 374.1], [213.4, 397.6], [201.5, 410.1], [200.2, 420.6], [190.8, 434.6], [173.4, 451.3], [161.5, 465.9], [148.6, 486.8], [150.6, 510.9], [150.8, 550.9], [153.2, 590.2], [151.7, 623.5], [150.5, 648.5], [144.2, 686.4], [141.1, 728.7], [139.5, 775.1], [143.9, 803.3], [154.1, 792.2], [157.8, 784.6], [169.8, 748.2], [185.8, 719.0], [209.2, 682.7], [243.1, 638.9], [279.7, 596.2], [315.1, 570.0], [342.2, 549.8], [360.2, 535.2], [374.2, 501.4], [379.4, 465.3], [386.1, 429.5], [389.8, 411.0], [388.0, 385.8], [367.8, 326.9], [353.4, 253.3], [358.2, 205.9], [357.0, 166.6], [356.6, 146.9], [371.0, 150.3], [392.6, 134.6], [391.0, 103.1], [381.3, 84.7], [376.4, 74.8], [367.0, 68.1], [360.4, 65.1], [358.0, 64.0], [323.0, 61.0], [321.5, 63.1], [322.8, 65.2], [327.4, 73.4], [316.2, 76.9], [304.9, 78.4], [293.9, 80.6], [280.9, 86.6], [265.7, 90.6]], "color": "#1f77b4", "description": "Open highways (Route 6, Route 2, Route 40, Route 90). The country maintains a streamlined silhouette with gentle compression along central corridors."}, "car8": {"title": "3. Car at 8:00 AM (Rush-Hour Congestion)", "shortTitle": "Car: 8 AM Rush Hour", "stress": "11.7%", "nodes": [[360.3, 121.9], [371.6, 133.5], [358.8, 53.7], [387.4, 87.9], [336.5, 57.0], [237.0, 175.3], [343.4, 184.4], [335.1, 235.4], [273.3, 260.2], [172.1, 284.5], [148.4, 279.0], [157.2, 341.8], [326.4, 380.3], [238.6, 370.6], [405.5, 472.8], [236.8, 425.9], [314.0, 465.5], [262.4, 469.2], [271.0, 518.9], [236.6, 584.0], [195.4, 759.4]], "border": [[287.6, 101.8], [281.7, 114.2], [275.4, 127.1], [251.5, 148.9], [242.6, 164.7], [233.3, 180.7], [210.5, 223.8], [201.2, 244.2], [193.2, 261.6], [187.8, 283.9], [184.7, 293.6], [183.8, 309.8], [182.7, 316.1], [185.7, 329.2], [189.7, 344.1], [193.1, 362.8], [199.3, 388.8], [199.4, 402.6], [206.1, 414.1], [208.0, 429.4], [203.3, 447.8], [200.1, 463.6], [195.8, 485.7], [201.2, 509.7], [199.3, 548.2], [194.6, 584.5], [189.5, 614.8], [188.4, 637.0], [185.9, 670.7], [187.5, 708.4], [187.7, 752.2], [191.0, 780.0], [201.6, 768.7], [205.5, 761.2], [216.4, 725.9], [228.6, 698.5], [243.9, 664.6], [264.9, 622.7], [290.2, 579.7], [318.5, 552.5], [342.1, 532.1], [358.6, 517.9], [373.7, 487.2], [378.5, 455.8], [384.1, 425.4], [388.6, 409.8], [387.6, 387.7], [363.9, 333.1], [347.9, 262.7], [356.8, 218.8], [358.7, 182.0], [360.8, 163.9], [376.5, 168.3], [401.5, 154.8], [405.8, 126.7], [403.4, 110.8], [405.6, 102.9], [404.2, 97.6], [402.5, 95.4], [402.4, 94.5], [367.1, 90.4], [361.5, 91.4], [359.9, 92.7], [356.2, 98.6], [342.8, 99.8], [331.1, 99.3], [319.4, 99.2], [303.9, 101.4], [287.6, 101.8]], "color": "#d62728", "description": "The central core (Gush Dan, Herzliya, Rishon LeZion, Jerusalem) expands significantly. Bottlenecks into the central hub swell metropolitan time-distances, while desert links remain steady."}, "transit": {"title": "4. Public Transit at 8:00 AM (Morning Peak Corridors)", "shortTitle": "Transit: 8 AM Peak", "stress": "6.9%", "nodes": [[341.7, 52.4], [334.2, 87.2], [366.4, 107.5], [415.5, 103.0], [288.7, 93.7], [251.1, 185.1], [332.3, 165.9], [382.0, 228.9], [239.8, 241.0], [232.1, 290.1], [240.2, 327.5], [217.8, 330.4], [300.4, 366.8], [200.4, 361.4], [387.4, 445.7], [196.1, 416.9], [336.8, 481.2], [229.7, 469.7], [263.9, 533.4], [208.5, 599.9], [202.9, 773.7]], "border": [[247.3, 100.5], [248.5, 120.1], [249.8, 137.4], [236.9, 161.8], [237.4, 178.3], [237.5, 194.3], [237.3, 234.5], [236.0, 252.8], [232.9, 268.7], [229.7, 289.0], [226.1, 298.2], [221.6, 313.4], [218.1, 319.6], [214.8, 331.9], [209.7, 346.1], [199.2, 363.9], [184.9, 387.8], [173.7, 400.0], [173.6, 410.6], [165.8, 424.3], [150.0, 440.2], [139.7, 454.3], [129.0, 475.2], [135.0, 501.5], [141.8, 546.5], [151.6, 591.2], [157.4, 626.7], [163.7, 651.3], [170.1, 685.9], [181.5, 723.2], [190.4, 765.7], [197.7, 792.6], [207.8, 781.9], [211.0, 774.7], [218.0, 741.1], [228.1, 715.4], [243.6, 684.2], [270.8, 645.6], [304.1, 603.2], [336.7, 572.7], [359.1, 546.9], [372.4, 527.6], [375.8, 485.7], [372.2, 442.9], [377.7, 401.6], [384.8, 381.5], [389.5, 357.1], [381.3, 309.2], [374.8, 255.2], [383.4, 221.0], [380.3, 191.1], [378.5, 174.9], [400.3, 177.5], [431.0, 161.9], [428.4, 128.6], [416.0, 103.3], [412.2, 83.2], [403.3, 64.0], [397.2, 52.8], [395.5, 47.3], [342.5, 52.5], [336.5, 62.3], [336.0, 69.1], [337.1, 89.2], [318.8, 94.6], [302.0, 95.0], [285.9, 95.7], [267.1, 100.3], [247.3, 100.5]], "color": "#9467bd", "description": "The central coastal rail spine (Nahariya\u2013Haifa\u2013Hadera\u2013Herzliya\u2013Tel Aviv\u2013Rishon\u2013Ashdod\u2013Be'er Sheva & Jerusalem) pulls inward into a high-speed core. Conversely, mountain towns (Tzfat, Beit Jann), Golan settlements (Katsrin), Dead Sea oases (Ein Gedi), and crater towns (Mitzpe Ramon) push outward due to bus transfer friction."}}, "pairwise": {"geoDist": [[0.0, 7.7, 35.6, 33.5, 39.4, 77.3, 53.6, 86.9, 112.4, 141.6, 152.3, 162.7, 169.9, 185.4, 203.5, 215.6, 226.4, 236.9, 261.5, 305.1, 417.1], [7.7, 0.0, 27.9, 26.6, 32.4, 71.6, 45.9, 79.2, 105.7, 134.5, 145.2, 155.6, 162.2, 178.2, 195.8, 208.3, 218.7, 229.4, 253.8, 297.5, 409.4], [35.6, 27.9, 0.0, 18.6, 11.0, 51.5, 19.0, 51.9, 80.3, 108.0, 118.7, 128.6, 134.4, 151.4, 168.3, 181.1, 190.9, 201.6, 225.9, 269.6, 381.7], [33.5, 26.6, 18.6, 0.0, 29.5, 69.8, 26.4, 57.8, 95.6, 121.7, 132.3, 141.4, 141.8, 164.1, 173.4, 192.9, 197.2, 211.1, 233.7, 277.4, 387.4], [39.4, 32.4, 11.0, 29.5, 0.0, 41.5, 23.6, 53.1, 73.3, 102.2, 112.9, 123.3, 132.7, 145.9, 168.1, 176.2, 189.8, 198.3, 223.6, 267.2, 380.4], [77.3, 71.6, 51.5, 69.8, 41.5, 0.0, 51.2, 58.3, 40.5, 71.0, 81.1, 93.0, 115.0, 114.3, 153.6, 145.7, 171.5, 172.2, 200.6, 243.1, 359.2], [53.6, 45.9, 19.0, 26.4, 23.6, 51.2, 0.0, 33.3, 70.4, 95.5, 106.1, 115.0, 116.8, 137.8, 149.9, 166.5, 172.9, 185.3, 208.6, 252.3, 363.6], [86.9, 79.2, 51.9, 57.8, 53.1, 58.3, 33.3, 0.0, 55.1, 72.0, 81.7, 88.5, 84.1, 110.7, 116.6, 137.6, 139.7, 153.7, 176.0, 219.6, 330.3], [112.4, 105.7, 80.3, 95.6, 73.3, 40.5, 70.4, 55.1, 0.0, 30.6, 40.8, 52.6, 78.4, 74.2, 117.6, 105.5, 133.1, 131.8, 160.6, 202.8, 319.3], [141.6, 134.5, 108.0, 121.7, 102.2, 71.0, 95.5, 72.0, 30.6, 0.0, 10.7, 22.0, 56.2, 43.9, 94.4, 74.9, 106.4, 101.6, 131.1, 172.9, 289.7], [152.3, 145.2, 118.7, 132.3, 112.9, 81.1, 106.1, 81.7, 40.8, 10.7, 0.0, 12.5, 54.0, 33.4, 90.5, 64.6, 100.2, 92.5, 122.7, 163.8, 281.0], [162.7, 155.6, 128.6, 141.4, 123.3, 93.0, 115.0, 88.5, 52.6, 22.0, 12.5, 0.0, 46.1, 22.8, 80.5, 53.1, 88.6, 80.0, 110.2, 151.4, 268.5], [169.9, 162.2, 134.4, 141.8, 132.7, 115.0, 116.8, 84.1, 78.4, 56.2, 54.0, 46.1, 0.0, 53.8, 39.2, 65.6, 57.2, 71.4, 91.9, 135.6, 247.7], [185.4, 178.2, 151.4, 164.1, 145.9, 114.3, 137.8, 110.7, 74.2, 43.9, 33.4, 22.8, 53.8, 0.0, 79.3, 31.5, 80.3, 62.6, 94.4, 133.4, 251.0], [203.5, 195.8, 168.3, 173.4, 168.1, 153.6, 149.9, 116.6, 117.6, 94.4, 90.5, 80.5, 39.2, 79.3, 0.0, 75.0, 26.4, 60.7, 67.0, 108.5, 214.1], [215.6, 208.3, 181.1, 192.9, 176.2, 145.7, 166.5, 137.6, 105.5, 74.9, 64.6, 53.1, 65.6, 31.5, 75.0, 0.0, 65.5, 35.3, 67.6, 103.5, 220.9], [226.4, 218.7, 190.9, 197.2, 189.8, 171.5, 172.9, 139.7, 133.1, 106.4, 100.2, 88.6, 57.2, 80.3, 26.4, 65.5, 0.0, 40.6, 40.6, 82.3, 190.7], [236.9, 229.4, 201.6, 211.1, 198.3, 172.2, 185.3, 153.7, 131.8, 101.6, 92.5, 80.0, 71.4, 62.6, 60.7, 35.3, 40.6, 0.0, 32.4, 71.4, 188.7], [261.5, 253.8, 225.9, 233.7, 223.6, 200.6, 208.6, 176.0, 160.6, 131.1, 122.7, 110.2, 91.9, 94.4, 67.0, 67.6, 40.6, 32.4, 0.0, 43.7, 158.7], [305.1, 297.5, 269.6, 277.4, 267.2, 243.1, 252.3, 219.6, 202.8, 172.9, 163.8, 151.4, 135.6, 133.4, 108.5, 103.5, 82.3, 71.4, 43.7, 0.0, 117.6], [417.1, 409.4, 381.7, 387.4, 380.4, 359.2, 363.6, 330.3, 319.3, 289.7, 281.0, 268.5, 247.7, 251.0, 214.1, 220.9, 190.7, 188.7, 158.7, 117.6, 0.0]], "car3": [[0, 12, 44, 36, 49, 62, 43, 69, 89, 113, 121, 129, 135, 147, 254, 172, 185, 189, 213, 249, 332], [12, 0, 35, 29, 40, 85, 37, 63, 84, 107, 115, 124, 129, 142, 244, 166, 178, 183, 207, 243, 326], [44, 35, 0, 23, 14, 60, 35, 65, 100, 135, 105, 160, 167, 189, 210, 226, 238, 251, 282, 336, 476], [36, 29, 23, 0, 37, 75, 28, 62, 103, 131, 120, 153, 153, 177, 216, 208, 213, 228, 252, 300, 418], [49, 40, 14, 37, 0, 45, 29, 66, 91, 127, 100, 154, 165, 182, 209, 220, 236, 247, 279, 333, 474], [62, 85, 60, 75, 45, 0, 50, 46, 35, 55, 65, 74, 92, 91, 191, 116, 140, 137, 164, 198, 286], [43, 37, 35, 28, 29, 50, 0, 27, 56, 76, 95, 92, 93, 110, 187, 133, 141, 147, 170, 206, 289], [69, 63, 65, 62, 66, 46, 27, 0, 44, 57, 85, 70, 67, 88, 145, 109, 114, 122, 143, 179, 263], [89, 84, 100, 103, 91, 35, 56, 44, 0, 24, 40, 42, 62, 59, 147, 84, 109, 105, 131, 165, 254], [113, 107, 135, 131, 127, 55, 76, 57, 24, 0, 18, 17, 45, 35, 118, 60, 87, 81, 107, 141, 231], [121, 115, 105, 120, 100, 65, 95, 85, 40, 18, 0, 18, 55, 38, 113, 60, 85, 75, 105, 110, 220], [129, 124, 160, 153, 154, 74, 92, 70, 42, 17, 18, 0, 37, 20, 100, 42, 72, 64, 90, 123, 214], [135, 129, 167, 153, 165, 92, 93, 67, 62, 45, 55, 37, 0, 43, 65, 52, 47, 75, 75, 111, 197], [147, 142, 189, 177, 182, 91, 110, 88, 59, 35, 38, 20, 43, 0, 99, 35, 65, 50, 77, 109, 200], [254, 244, 210, 216, 209, 191, 187, 145, 147, 118, 113, 100, 65, 99, 0, 93, 33, 76, 83, 135, 267], [172, 166, 226, 208, 220, 116, 133, 109, 84, 60, 60, 42, 52, 35, 93, 0, 53, 30, 55, 84, 176], [185, 178, 238, 213, 236, 140, 141, 114, 109, 87, 85, 72, 47, 65, 33, 53, 0, 33, 33, 67, 155], [189, 183, 251, 228, 247, 137, 147, 122, 105, 81, 75, 64, 75, 50, 76, 30, 33, 0, 25, 60, 150], [213, 207, 282, 252, 279, 164, 170, 143, 131, 107, 105, 90, 75, 77, 83, 55, 33, 25, 0, 36, 129], [249, 243, 336, 300, 333, 198, 206, 179, 165, 141, 110, 123, 111, 109, 135, 84, 67, 60, 36, 0, 96], [332, 326, 476, 418, 474, 286, 289, 263, 254, 231, 220, 214, 197, 200, 267, 176, 155, 150, 129, 96, 0]], "car8": [[0, 12, 44, 36, 49, 82, 43, 69, 89, 158, 166, 174, 170, 147, 254, 172, 185, 189, 213, 249, 332], [12, 0, 40, 29, 40, 110, 37, 63, 84, 152, 155, 169, 164, 142, 244, 166, 178, 183, 207, 243, 326], [44, 40, 0, 23, 14, 75, 40, 65, 100, 180, 150, 205, 202, 189, 210, 226, 238, 251, 282, 336, 476], [36, 29, 23, 0, 37, 95, 28, 62, 103, 176, 165, 198, 188, 177, 216, 208, 213, 228, 252, 300, 418], [49, 40, 14, 37, 0, 55, 29, 66, 91, 172, 145, 199, 200, 182, 209, 220, 236, 247, 279, 333, 474], [82, 110, 75, 95, 55, 0, 70, 66, 45, 70, 80, 119, 127, 111, 211, 136, 160, 157, 184, 218, 306], [43, 37, 40, 28, 29, 70, 0, 27, 56, 121, 135, 137, 128, 110, 187, 133, 141, 147, 170, 206, 289], [69, 63, 65, 62, 66, 66, 27, 0, 44, 92, 125, 115, 102, 88, 145, 109, 114, 122, 143, 179, 263], [89, 84, 100, 103, 91, 45, 56, 44, 0, 59, 75, 77, 87, 59, 147, 84, 109, 105, 131, 165, 254], [158, 152, 180, 176, 172, 70, 121, 92, 59, 0, 48, 52, 80, 70, 163, 95, 132, 126, 152, 186, 276], [166, 155, 150, 165, 145, 80, 135, 125, 75, 48, 0, 55, 90, 75, 158, 100, 130, 135, 150, 175, 265], [174, 169, 205, 198, 199, 119, 137, 115, 77, 52, 55, 0, 72, 35, 145, 77, 117, 109, 135, 168, 259], [170, 164, 202, 188, 200, 127, 128, 102, 87, 80, 90, 72, 0, 68, 75, 77, 72, 105, 110, 146, 232], [147, 142, 189, 177, 182, 111, 110, 88, 59, 70, 75, 35, 68, 0, 99, 45, 65, 50, 77, 109, 200], [254, 244, 210, 216, 209, 211, 187, 145, 147, 163, 158, 145, 75, 99, 0, 93, 33, 76, 83, 135, 267], [172, 166, 226, 208, 220, 136, 133, 109, 84, 95, 100, 77, 77, 45, 93, 0, 53, 35, 55, 84, 176], [185, 178, 238, 213, 236, 160, 141, 114, 109, 132, 130, 117, 72, 65, 33, 53, 0, 33, 33, 67, 155], [189, 183, 251, 228, 247, 157, 147, 122, 105, 126, 135, 109, 105, 50, 76, 35, 33, 0, 35, 65, 175], [213, 207, 282, 252, 279, 184, 170, 143, 131, 152, 150, 135, 110, 77, 83, 55, 33, 35, 0, 36, 129], [249, 243, 336, 300, 333, 218, 206, 179, 165, 186, 175, 168, 146, 109, 135, 84, 67, 65, 36, 0, 96], [332, 326, 476, 418, 474, 306, 289, 263, 254, 276, 265, 259, 232, 200, 267, 176, 155, 175, 129, 96, 0]], "transit": [[0, 14, 77, 75, 82, 118, 93, 129, 156, 187, 199, 210, 218, 235, 277, 267, 285, 290, 323, 372, 484], [14, 0, 45, 67, 74, 95, 64, 120, 129, 160, 149, 182, 190, 207, 268, 239, 276, 262, 315, 363, 456], [77, 45, 0, 57, 48, 85, 40, 97, 131, 164, 169, 188, 195, 215, 236, 251, 262, 275, 304, 356, 490], [75, 67, 57, 0, 70, 118, 66, 104, 149, 180, 203, 203, 204, 230, 242, 265, 270, 286, 313, 365, 497], [82, 74, 48, 70, 0, 67, 63, 98, 122, 157, 159, 182, 193, 209, 235, 245, 261, 271, 301, 353, 488], [118, 95, 85, 118, 67, 0, 52, 98, 24, 42, 48, 115, 139, 138, 218, 172, 224, 200, 256, 303, 402], [93, 64, 40, 66, 63, 52, 0, 71, 91, 118, 126, 139, 141, 163, 214, 194, 226, 214, 265, 313, 406], [129, 120, 97, 104, 98, 98, 71, 0, 94, 112, 127, 130, 125, 154, 174, 183, 189, 200, 229, 277, 391], [156, 129, 131, 149, 122, 24, 91, 94, 0, 48, 27, 72, 99, 95, 175, 129, 182, 157, 212, 259, 359], [187, 160, 164, 180, 157, 42, 118, 112, 48, 0, 7, 39, 75, 62, 147, 96, 152, 124, 180, 226, 327], [199, 149, 169, 203, 159, 48, 126, 127, 27, 7, 0, 19, 37, 31, 143, 63, 114, 61, 121, 164, 266], [210, 182, 188, 203, 182, 115, 139, 130, 72, 39, 19, 0, 65, 20, 131, 72, 133, 101, 157, 202, 304], [218, 190, 195, 204, 193, 139, 141, 125, 99, 75, 37, 65, 0, 73, 76, 86, 98, 83, 136, 185, 282], [235, 207, 215, 230, 209, 138, 163, 154, 95, 62, 31, 20, 73, 0, 129, 40, 124, 82, 139, 182, 285], [277, 268, 236, 242, 235, 218, 214, 174, 175, 147, 143, 131, 76, 129, 0, 124, 66, 107, 115, 164, 290], [267, 239, 251, 265, 245, 172, 194, 183, 129, 96, 63, 72, 86, 40, 124, 0, 107, 25, 110, 149, 253], [285, 276, 262, 270, 261, 224, 226, 189, 182, 152, 114, 133, 98, 124, 66, 107, 0, 80, 80, 126, 245], [290, 262, 275, 286, 271, 200, 214, 200, 157, 124, 61, 101, 83, 82, 107, 25, 80, 0, 30, 75, 187], [323, 315, 304, 313, 301, 256, 265, 229, 212, 180, 121, 157, 136, 139, 115, 110, 80, 30, 0, 83, 210], [372, 363, 356, 365, 353, 303, 313, 277, 259, 226, 164, 202, 185, 182, 164, 149, 126, 75, 83, 0, 165], [484, 456, 490, 497, 488, 402, 406, 391, 359, 327, 266, 304, 282, 285, 290, 253, 245, 187, 210, 165, 0]]}};
 
 let currentMode = "transit";
-let selectedNodeId = 10; // Tel Aviv default
+let viewParadigm = "global"; // "global" or "radial"
+let pinnedNodeId = 17; // Be'er Sheva default to showcase the comparison!
 let linesVisible = true;
 
 const svg = document.getElementById("mapSvg");
 const borderPoly = document.getElementById("borderPoly");
 const allEdgesGroup = document.getElementById("allEdgesGroup");
 const dynamicLinesGroup = document.getElementById("dynamicLinesGroup");
+const isochronesGroup = document.getElementById("isochronesGroup");
 const nodesGroup = document.getElementById("nodesGroup");
+
+function setViewMode(mode) {
+  viewParadigm = mode;
+  document.getElementById("tabGlobal").className = "view-tab " + (mode === "global" ? "active" : "");
+  document.getElementById("tabRadial").className = "view-tab " + (mode === "radial" ? "active" : "");
+  
+  if (mode === "radial") {
+    document.getElementById("hintBanner").textContent = `🎯 Radial Mode: Distances from ${data.nodes[pinnedNodeId].name} strictly equal travel time! Concentric rings represent time isochrones.`;
+  } else {
+    document.getElementById("hintBanner").textContent = "🌐 Global Mode: Multi-city consensus 2D MDS. Click a city to project direct routes; click it again to hide.";
+  }
+
+  updateProjectionView();
+}
 
 // Mode Select Dropdown Listener
 document.getElementById("modeSelect").addEventListener("change", (e) => {
@@ -456,6 +519,81 @@ document.getElementById("toggleLabels").addEventListener("change", (e) => {
   });
 });
 
+function getRadialCoords(centerId) {
+  const geoBase = data.modes.geo.nodes;
+  const cP = geoBase[centerId];
+  
+  // Radial scaling factor: pixels per minute of travel time
+  // In Israel, ~300 minutes ~ 700 pixels, so ~2.2 px/min
+  const pxPerMin = 2.15;
+  const pxPerKmGeo = 1.95;
+
+  const radialNodes = [];
+  data.nodes.forEach((target, j) => {
+    if (j === centerId) {
+      radialNodes.push([cP[0], cP[1]]);
+      return;
+    }
+    
+    // Bearing from center in physical space
+    const targetGeo = geoBase[j];
+    const dx = targetGeo[0] - cP[0];
+    const dy = targetGeo[1] - cP[1];
+    const angle = Math.atan2(dy, dx);
+    
+    // Distance from center
+    let timeVal = 0;
+    if (currentMode === "geo") {
+      timeVal = data.pairwise.geoDist[centerId][j];
+      const r = timeVal * pxPerKmGeo;
+      radialNodes.push([cP[0] + r * Math.cos(angle), cP[1] + r * Math.sin(angle)]);
+    } else {
+      if (currentMode === "car3") timeVal = data.pairwise.car3[centerId][j];
+      else if (currentMode === "car8") timeVal = data.pairwise.car8[centerId][j];
+      else if (currentMode === "transit") timeVal = data.pairwise.transit[centerId][j];
+      
+      const r = timeVal * pxPerMin;
+      radialNodes.push([cP[0] + r * Math.cos(angle), cP[1] + r * Math.sin(angle)]);
+    }
+  });
+
+  return radialNodes;
+}
+
+function renderIsochrones(centerId) {
+  isochronesGroup.innerHTML = "";
+  if (viewParadigm !== "radial") {
+    isochronesGroup.style.display = "none";
+    return;
+  }
+  isochronesGroup.style.display = "block";
+
+  const cP = data.modes.geo.nodes[centerId];
+  const pxPerMin = 2.15;
+  
+  const intervals = (currentMode === "geo") 
+    ? [50, 100, 150, 200, 250, 300] 
+    : [30, 60, 90, 120, 180, 240];
+  const unit = (currentMode === "geo") ? "km" : "min";
+
+  intervals.forEach(val => {
+    const r = (currentMode === "geo") ? val * 1.95 : val * pxPerMin;
+    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    circle.setAttribute("cx", cP[0]);
+    circle.setAttribute("cy", cP[1]);
+    circle.setAttribute("r", r);
+    circle.setAttribute("class", "isochrone-ring");
+    isochronesGroup.appendChild(circle);
+
+    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    text.setAttribute("x", cP[0] + 6);
+    text.setAttribute("y", cP[1] - r + 11);
+    text.setAttribute("class", "isochrone-label");
+    text.textContent = `${val} ${unit}`;
+    isochronesGroup.appendChild(text);
+  });
+}
+
 function initMap() {
   // 1. Create All Static Edges
   data.edges.forEach(([u, v], idx) => {
@@ -465,7 +603,7 @@ function initMap() {
     allEdgesGroup.appendChild(line);
   });
 
-  // 2. Create Dynamic Lines (20 lines radiating from active node)
+  // 2. Create Dynamic Lines
   for (let j = 0; j < data.nodes.length; j++) {
     const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
     line.setAttribute("id", `dynamic-line-${j}`);
@@ -503,7 +641,6 @@ function initMap() {
       g.appendChild(rect);
     }
 
-    // Text Label (Bilingual: English / Hebrew)
     const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
     text.setAttribute("class", "node-label");
     text.textContent = `${node.name} / ${node.nameHe}`;
@@ -521,21 +658,14 @@ function initMap() {
     text.setAttribute("text-anchor", anchor);
     g.appendChild(text);
 
-    // Click Event: Toggle lines for this node
     g.addEventListener("click", () => {
-      if (document.getElementById("toggleAllLines").checked) return;
-      if (selectedNodeId === idx && linesVisible) {
+      if (pinnedNodeId === idx && linesVisible) {
         linesVisible = false;
       } else {
-        selectedNodeId = idx;
+        pinnedNodeId = idx;
         linesVisible = true;
       }
-      if (linesVisible) {
-        renderDynamicLines(selectedNodeId);
-      } else {
-        hideDynamicLines();
-      }
-      updateInfoCards(selectedNodeId);
+      updateProjectionView();
     });
 
     nodesGroup.appendChild(g);
@@ -546,14 +676,28 @@ function initMap() {
 
 function updateProjectionView() {
   const modeData = data.modes[currentMode];
+  let activeCoords = modeData.nodes;
+
+  if (viewParadigm === "radial") {
+    activeCoords = getRadialCoords(pinnedNodeId);
+    renderIsochrones(pinnedNodeId);
+    borderPoly.style.display = "none"; // In radial mode, borders warp into distorted circles
+  } else {
+    isochronesGroup.style.display = "none";
+    if (document.getElementById("toggleBorder").checked) {
+      borderPoly.style.display = "block";
+    }
+  }
 
   // Update Border
-  const pts = modeData.border.map(p => p.join(",")).join(" ");
-  borderPoly.setAttribute("points", pts);
-  borderPoly.style.stroke = modeData.color;
+  if (viewParadigm === "global") {
+    const pts = modeData.border.map(p => p.join(",")).join(" ");
+    borderPoly.setAttribute("points", pts);
+    borderPoly.style.stroke = modeData.color;
+  }
 
   // Update Nodes position
-  modeData.nodes.forEach(([x, y], idx) => {
+  activeCoords.forEach(([x, y], idx) => {
     const g = document.getElementById(`node-${idx}`);
     g.style.transform = `translate(${x}px, ${y}px)`;
   });
@@ -562,8 +706,8 @@ function updateProjectionView() {
   data.edges.forEach(([u, v]) => {
     const line = document.getElementById(`all-edge-${u}-${v}`);
     if (line) {
-      const p1 = modeData.nodes[u];
-      const p2 = modeData.nodes[v];
+      const p1 = activeCoords[u];
+      const p2 = activeCoords[v];
       line.setAttribute("x1", p1[0]);
       line.setAttribute("y1", p1[1]);
       line.setAttribute("x2", p2[0]);
@@ -571,18 +715,39 @@ function updateProjectionView() {
     }
   });
 
-  document.getElementById("projTitle").textContent = modeData.title;
-  document.getElementById("projDesc").textContent = modeData.description;
-  const badge = document.getElementById("projBadge");
-  badge.textContent = `Stress: ${modeData.stress}`;
-  badge.className = `badge badge-${currentMode}`;
+  // Update Callout & Description
+  if (viewParadigm === "radial") {
+    const pName = data.nodes[pinnedNodeId].name;
+    document.getElementById("projTitle").textContent = `Radial Isochrone Lens: Centered on ${pName}`;
+    document.getElementById("projDesc").textContent = `Every city's distance from ${pName} strictly equals its exact travel time. True compass bearings are preserved. Concentric rings indicate travel time contours.`;
+    document.getElementById("projBadge").textContent = "Exact (0% Distortion from Center)";
+    document.getElementById("projBadge").className = "badge badge-transit";
+    
+    if (pinnedNodeId === 17) { // Be'er Sheva
+      document.getElementById("projCallout").innerHTML = `
+        <strong>Be'er Sheva Perspective:</strong> In this exact radial view, <strong>Tel Aviv sits at 61 min</strong> on the 1-hour ring, while <strong>Rishon LeZion sits at 101 min</strong> (visibly 40% further out!). The visual distance strictly reflects travel time.
+      `;
+    } else {
+      document.getElementById("projCallout").innerHTML = `
+        <strong>Exact Perspective:</strong> Distances from ${pName} are 100% proportional to travel times. Cities connected by fast corridors appear closer to the center than geographically closer towns that require transfers.
+      `;
+    }
+  } else {
+    document.getElementById("projTitle").textContent = modeData.title;
+    document.getElementById("projDesc").textContent = modeData.description;
+    document.getElementById("projBadge").textContent = `MDS Stress: ${modeData.stress}`;
+    document.getElementById("projBadge").className = `badge badge-${currentMode}`;
+    document.getElementById("projCallout").innerHTML = `
+      <strong>Global Consensus Map:</strong> Balances all 210 pairs simultaneously across Israel. Notice how Tel Aviv and Be'er Sheva are pulled toward each other along the railway spine.
+    `;
+  }
 
   if (linesVisible) {
-    renderDynamicLines(selectedNodeId);
+    renderDynamicLines(pinnedNodeId);
   } else {
     hideDynamicLines();
   }
-  updateInfoCards(selectedNodeId);
+  updateInfoCards(pinnedNodeId);
 }
 
 function hideDynamicLines() {
@@ -591,7 +756,7 @@ function hideDynamicLines() {
     const g = document.getElementById(`node-${idx}`);
     const shape = g.querySelector("circle, rect");
     if (shape) {
-      if (idx === selectedNodeId) {
+      if (idx === pinnedNodeId) {
         shape.style.stroke = "#7dd3fc";
         shape.style.strokeWidth = "2.5px";
       } else {
@@ -604,7 +769,8 @@ function hideDynamicLines() {
 
 function renderDynamicLines(originIdx) {
   const modeData = data.modes[currentMode];
-  const pOrigin = modeData.nodes[originIdx];
+  const activeCoords = (viewParadigm === "radial") ? getRadialCoords(pinnedNodeId) : modeData.nodes;
+  const pOrigin = activeCoords[originIdx];
 
   data.nodes.forEach((target, j) => {
     const line = document.getElementById(`dynamic-line-${j}`);
@@ -613,13 +779,12 @@ function renderDynamicLines(originIdx) {
       return;
     }
 
-    const pTarget = modeData.nodes[j];
+    const pTarget = activeCoords[j];
     line.setAttribute("x1", pOrigin[0]);
     line.setAttribute("y1", pOrigin[1]);
     line.setAttribute("x2", pTarget[0]);
     line.setAttribute("y2", pTarget[1]);
 
-    // Compute Speed to color-code line
     const dist = data.pairwise.geoDist[originIdx][j];
     let time = 1;
     if (currentMode === "geo") time = dist;
@@ -629,25 +794,17 @@ function renderDynamicLines(originIdx) {
 
     const speed = (currentMode === "geo") ? 75 : (dist / (time / 60));
 
-    // Color code based on speed
-    let strokeColor = "#38bdf8"; // fast (>85 km/h)
+    let strokeColor = "#38bdf8";
     if (speed >= 85) strokeColor = "#38bdf8";
-    else if (speed >= 60) strokeColor = "#34d399"; // medium
-    else strokeColor = "#f87171"; // slow (<60 km/h)
+    else if (speed >= 60) strokeColor = "#34d399";
+    else strokeColor = "#f87171";
 
-    // Highlight specific key lines (e.g. Tel Aviv - Be'er Sheva)
     const isTABS = (originIdx === 10 && j === 17) || (originIdx === 17 && j === 10);
-    if (isTABS) {
-      line.setAttribute("stroke-width", "3.5");
-    } else {
-      line.setAttribute("stroke-width", "2.0");
-    }
-
+    line.setAttribute("stroke-width", isTABS ? "3.5" : "2.0");
     line.setAttribute("stroke", strokeColor);
     line.style.display = "block";
   });
 
-  // Node highlight styling
   data.nodes.forEach((n, idx) => {
     const g = document.getElementById(`node-${idx}`);
     const shape = g.querySelector("circle, rect");
@@ -655,6 +812,9 @@ function renderDynamicLines(originIdx) {
       if (idx === originIdx) {
         shape.style.stroke = "#38bdf8";
         shape.style.strokeWidth = "3.5px";
+      } else if (idx === pinnedNodeId) {
+        shape.style.stroke = "#7dd3fc";
+        shape.style.strokeWidth = "2.5px";
       } else {
         shape.style.stroke = "#fff";
         shape.style.strokeWidth = "1.5px";
@@ -667,7 +827,7 @@ function updateInfoCards(id) {
   const node = data.nodes[id];
   const modeData = data.modes[currentMode];
 
-  document.getElementById("townName").textContent = `Active: ${node.name} / ${node.nameHe}`;
+  document.getElementById("townName").textContent = `Selected: ${node.name} / ${node.nameHe}`;
   document.getElementById("townType").textContent = node.type;
   document.getElementById("townRegion").textContent = `Region: ${node.region}`;
   document.getElementById("statAvgTransit").textContent = `${node.avgTransit.toFixed(1)} min`;
