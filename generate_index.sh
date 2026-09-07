@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 files=()
 for f in *.html; do
   [[ "$f" == "index.html" ]] && continue
-  [[ "$f" == _* ]] && continue
+  [[ "$f" == *.unlisted.html ]] && continue
   [[ -e "$f" ]] || continue
   files+=("$f")
 done
