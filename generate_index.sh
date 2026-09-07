@@ -6,6 +6,7 @@ cd "$(dirname "$0")"
 files=()
 for f in *.html; do
   [[ "$f" == "index.html" ]] && continue
+  [[ "$f" == _* ]] && continue
   [[ -e "$f" ]] || continue
   files+=("$f")
 done
@@ -42,7 +43,8 @@ HEAD
     echo "<li>No files yet.</li>"
   else
     for f in "${files[@]}"; do
-      mod=$(date -r "$f" "+%Y-%m-%d")
+      mod=$(git log -1 --format='%ad' --date=format:'%Y-%m-%d' -- "$f" 2>/dev/null)
+      [[ -z "$mod" ]] && mod=$(date -r "$f" "+%Y-%m-%d")
       printf '<li><a href="%s">%s</a><span class="date">%s</span></li>\n' "$f" "${f%.html}" "$mod"
     done
   fi
