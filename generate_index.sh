@@ -43,7 +43,7 @@ HEAD
     echo "<li>No files yet.</li>"
   else
     for f in "${files[@]}"; do
-      mod=$(git log -1 --format='%ad' --date=format:'%Y-%m-%d' -- "$f" 2>/dev/null)
+      mod=$(git log --follow --format='%ad' --date=format:'%Y-%m-%d' -- "$f" 2>/dev/null | tail -1)
       [[ -z "$mod" ]] && mod=$(date -r "$f" "+%Y-%m-%d")
       printf '<li><a href="%s">%s</a><span class="date">%s</span></li>\n' "$f" "${f%.html}" "$mod"
     done
