@@ -552,6 +552,7 @@ const activities = [
   { day:'שלישי',  kid:'אורי', act:'חרבות וכשפים',  start:'16:45', end:'18:15' },
   { day:'שלישי',  kid:'יובל', act:'שחייה',          start:'17:30', end:'18:30', shared:true, col:1 },
   { day:'שלישי',  kid:'עופר', act:'שחייה',          start:'17:30', end:'18:30', shared:true, col:2 },
+  { day:'שלישי',  kid:'אורי', act:'נובה-קיד',      start:'20:30', end:'20:55' },
 
   { day:'רביעי',  kid:'יובל', act:'קפוארה',        start:'16:15', end:'17:00', col:1 },
   { day:'רביעי',  kid:'עופר', act:'כדורסל',        start:'15:30', end:'16:30', col:2 },
@@ -563,6 +564,7 @@ const activities = [
   { day:'חמישי',  kid:'אורי', act:'חליל צד',        start:'16:15', end:'17:00' },
   { day:'חמישי',  kid:'אורי', act:'אנגלית',         start:'17:30', end:'18:15' },
   { day:'חמישי',  kid:'נטע',  act:'אנגלית',         start:'16:45', end:'17:30' },
+  { day:'חמישי',  kid:'נטע',  act:'נובה-קיד',      start:'19:30', end:'19:55' },
 ];
 
 const unscheduled = [
@@ -582,7 +584,7 @@ function visibleUnscheduled(){
 // ---------- time helpers ----------
 const DAY_START = 13*60; // 13:00
 const ROW_MIN = 5;
-const TOTAL_ROWS = (20*60 - DAY_START) / ROW_MIN; // 84 rows, until 20:00
+const TOTAL_ROWS = (21*60 - DAY_START) / ROW_MIN; // 96 rows, until 21:00
 
 function toMin(t){
   const [h,m] = t.split(':').map(Number);
@@ -603,7 +605,7 @@ function buildGrid(){
 
   // time axis
   html += `<div class="time-axis">`;
-  for(let h=13; h<=20; h++){
+  for(let h=13; h<=21; h++){
     const r = rowOf(h + ':00');
     html += `<div class="time-label" style="grid-row:${r}">${h}:00</div>`;
   }
