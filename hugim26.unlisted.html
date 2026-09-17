@@ -557,7 +557,7 @@ const activities = [
   { day:'רביעי',  kid:'יובל', act:'קפוארה',        start:'16:15', end:'17:00', col:1 },
   { day:'רביעי',  kid:'עופר', act:'כדורסל',        start:'15:30', end:'16:30', col:2 },
   { day:'רביעי',  kid:'עופר', act:'חצוצרה',         start:'17:00', end:'17:45' },
-  { day:'רביעי',  kid:'נטע',  act:'תזמורת',        start:'16:00', end:'16:45' },
+  { day:'רביעי',  kid:'נטע',  act:'תזמורת',        start:'16:00', end:'16:45', col:3 },
   { day:'רביעי',  kid:'נטע',  act:'קפוארה',        start:'18:45', end:'19:45' },
 
   { day:'חמישי',  kid:'יובל', act:'כדורגל',         start:'16:00', end:'17:15' },
@@ -613,13 +613,15 @@ function buildGrid(){
 
   // day columns
   days.forEach(day => {
-    html += `<div class="day-col">`;
-    visibleActivities().filter(a => a.day === day).forEach(a => {
+    const dayItems = visibleActivities().filter(a => a.day === day);
+    const maxCol = Math.max(2, ...dayItems.map(a => a.col || 0));
+    html += `<div class="day-col" data-cols="${maxCol}">`;
+    dayItems.forEach(a => {
       const rs = rowOf(a.start);
       const re = rowOf(a.end);
-      let colStyle = 'grid-column:1 / 3';
-      if(a.col === 1) colStyle = 'grid-column:1 / 2';
-      if(a.col === 2) colStyle = 'grid-column:2 / 3';
+      const colStyle = a.col
+        ? `grid-column:${a.col} / ${a.col + 1}`
+        : `grid-column:1 / ${maxCol + 1}`;
       html += `<div class="block ${kidClass[a.kid]} ${a.shared?'shared':''}" style="grid-row:${rs} / ${re}; ${colStyle}">
         <span class="kid">${a.kid}</span>
         <span class="act">${a.act}</span>
@@ -634,7 +636,7 @@ function buildGrid(){
   // give day columns + time axis their own row grid for precise time positioning
   wrap.querySelectorAll('.day-col').forEach(col => {
     col.style.display = 'grid';
-    col.style.gridTemplateColumns = '1fr 1fr';
+    col.style.gridTemplateColumns = `repeat(${col.dataset.cols}, 1fr)`;
     col.style.gridTemplateRows = `repeat(${TOTAL_ROWS}, 13px)`;
   });
   const axis = wrap.querySelector('.time-axis');
