@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wide View – visual field compression simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #ffffff;
+  --fg: #141414;
+  --muted: #4a4a4a;
+  --line: #c9c9c9;
+  --accent: #6b5200;
+  --accent-ink: #ffffff;
+  --chip: #f1f1f1;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #000000; --fg: #ffffff; --muted: #c8c8c8; --line: #3a3a3a;
+    --accent: #ffd400; --accent-ink: #000000; --chip: #1a1a1a;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #000000; --fg: #ffffff; --muted: #c8c8c8; --line: #3a3a3a;
+  --accent: #ffd400; --accent-ink: #000000; --chip: #1a1a1a;
+}
+*, *::before, *::after { box-sizing: inherit; }
+html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); }
+body {
+  height: 100%; margin: 0; background: var(--bg); color: var(--fg);
+  font-family: "Rubik", "Arial Hebrew", Arial, system-ui, sans-serif;
+  font-size: 18px; line-height: 1.45;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+#stage { position: relative; flex: 1 1 auto; min-height: 0; background: #000; }
+canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#hud {
+  position: absolute; top: 10px; right: 12px; left: 12px; pointer-events: none;
+  color: #fff; font-size: 16px; text-shadow: 0 1px 3px #000; display: flex;
+  justify-content: space-between; gap: 8px;
+}
+#hud b { color: #ffd400; font-weight: 500; }
+#start {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  padding: 24px; background: #000; color: #fff; overflow-y: auto;
+}
+#start .inner { max-width: 30em; }
+#start h1 { font-size: 34px; line-height: 1.15; margin: 0 0 12px; font-weight: 700; color: #ffd400; }
+#start p { margin: 0 0 14px; color: #e6e6e6; }
+#start .tip { font-size: 16px; color: #bdbdbd; }
+#err { color: #ffb3a7; min-height: 1.4em; }
+.big {
+  display: block; width: 100%; min-height: 56px; margin: 10px 0; border-radius: 14px;
+  font: inherit; font-size: 20px; font-weight: 500; cursor: pointer;
+  border: 2px solid #ffd400; background: #ffd400; color: #000;
+}
+.big.secondary { background: transparent; color: #ffd400; }
+button:focus-visible, input:focus-visible, label:focus-within {
+  outline: 3px solid var(--accent); outline-offset: 2px;
+}
+#start .big:focus-visible { outline-color: #fff; }
+
+#panel {
+  flex: 0 0 auto; background: var(--bg); border-top: 1px solid var(--line);
+  max-height: 52vh; overflow-y: auto; padding: 10px 14px 12px;
+}
+#panel.collapsed .body { display: none; }
+.row { display: flex; gap: 8px; align-items: center; }
+.modes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.modes button {
+  min-height: 52px; padding: 6px 4px; border-radius: 10px; font: inherit; font-size: 15px;
+  line-height: 1.2; background: var(--chip); color: var(--fg); border: 2px solid var(--line); cursor: pointer;
+}
+.modes button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+#modeDesc { color: var(--muted); font-size: 16px; margin: 8px 2px 4px; min-height: 2.9em; }
+.slider { margin: 10px 0 4px; }
+.slider .lbl { display: flex; justify-content: space-between; gap: 8px; }
+.slider .val { font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+.slider .hint { font-size: 14px; color: var(--muted); }
+.slider[hidden] { display: none; }
+input[type=range] { width: 100%; height: 36px; accent-color: var(--accent); direction: ltr; }
+.check { display: flex; gap: 10px; align-items: center; margin: 10px 0; min-height: 40px; }
+.check input { width: 24px; height: 24px; accent-color: var(--accent); }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.tools button, #toggle {
+  min-height: 48px; padding: 6px 14px; border-radius: 10px; font: inherit; font-size: 16px;
+  background: transparent; color: var(--fg); border: 2px solid var(--line); cursor: pointer;
+}
+#toggle { margin-inline-start: auto; }
+#camName { font-size: 14px; color: var(--muted); width: 100%; }
+.head { margin-bottom: 8px; }
+.head strong { font-size: 18px; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="gl" aria-label="Camera view after compression"></canvas>
+  <div id="hud" aria-live="polite"><span id="hudMode"></span><span id="hudField"></span></div>
+  <div id="start">
+    <div class="inner">
+      <h1>Wide View</h1>
+      <p>The camera films what's in front of you, and the image is squeezed into a circle in the middle of the screen, like a lens that fits a wide field into a narrow field of vision.</p>
+      <p>Hold the phone at arm's length and look at the center of the circle. You can switch between four mappings and adjust every parameter.</p>
+      <button class="big" id="btnCam">Start camera</button>
+      <button class="big secondary" id="btnFile">Choose a photo or video</button>
+      <p id="err" role="alert"></p>
+      <p class="tip">If the camera doesn't open: take a photo or video at 0.5x zoom (the ultrawide lens) and choose it here. Then set "Camera field" to about 110°.</p>
+    </div>
+  </div>
+</div>
+
+<div id="panel">
+  <div class="row head">
+    <strong>Mapping</strong>
+    <button id="toggle" aria-expanded="true">Hide settings</button>
+  </div>
+  <div class="body">
+    <div class="modes" role="group" aria-label="Mapping type">
+      <button data-mode="0" aria-pressed="false">Normal</button>
+      <button data-mode="1" aria-pressed="false">Uniform</button>
+      <button data-mode="2" aria-pressed="true">Sharp center</button>
+      <button data-mode="3" aria-pressed="false">Outlines</button>
+    </div>
+    <p id="modeDesc"></p>
+
+    <div class="slider" data-for="I">
+      <div class="lbl"><label for="sI">Circle field in normal mode</label><span class="val" id="vI"></span></div>
+      <input type="range" id="sI" min="5" max="60" step="1" value="20">
+      <div class="hint">Roughly the size of the remaining field of vision. The sharp zone keeps this scale.</div>
+    </div>
+    <div class="slider" data-for="F">
+      <div class="lbl"><label for="sF">Total field squeezed in</label><span class="val" id="vF"></span></div>
+      <input type="range" id="sF" min="20" max="150" step="1" value="100">
+    </div>
+    <div class="slider" data-for="P">
+      <div class="lbl"><label for="sP">Sharp zone size</label><span class="val" id="vP"></span></div>
+      <input type="range" id="sP" min="0" max="90" step="1" value="50">
+      <div class="hint">Share of the circle's radius left undistorted. Everything outside it is compressed periphery.</div>
+    </div>
+    <div class="slider" data-for="C">
+      <div class="lbl"><label for="sC">Camera field</label><span class="val" id="vC"></span></div>
+      <input type="range" id="sC" min="40" max="130" step="1" value="70">
+      <div class="hint">Along the long side of the image. About 70° for the main camera, 105–115° for the ultrawide.</div>
+    </div>
+    <div class="slider" data-for="D">
+      <div class="lbl"><label for="sD">Circle size on screen</label><span class="val" id="vD"></span></div>
+      <input type="range" id="sD" min="20" max="100" step="1" value="92">
+    </div>
+    <label class="check" id="ringWrap"><input type="checkbox" id="ring" checked> Show sharp zone boundary</label>
+
+    <div class="tools">
+      <button id="btnSwitch" hidden>Switch camera</button>
+      <button id="btnFreeze">Freeze</button>
+      <button id="btnFile2">Photo or video</button>
+      <span id="camName"></span>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="file" accept="image/*,video/*" hidden>
+<video id="video" playsinline muted autoplay loop hidden></video>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const canvas = $("gl"), video = $("video");
+  const MODES = [
+    { name: "Normal", desc: "No compression: the circle shows only the central field, as it looks today." },
+    { name: "Uniform", desc: "The whole wide field is shrunk evenly. You see more, but everything is smaller, including the center." },
+    { name: "Sharp center", desc: "The center stays at normal size, and the field is compressed more and more toward the edge." },
+    { name: "Outlines", desc: "A normal image in the circle, with yellow outlines of the whole wide field drawn on top, shrunk." }
+  ];
+  const st = { mode: 2, I: 20, F: 100, P: 0.5, C: 70, D: 0.92, ring: true, frozen: false, src: null, srcW: 1, srcH: 1, devices: [], devIdx: -1, stream: null, dirty: true };
+
+  // ---------- WebGL ----------
+  const gl = canvas.getContext("webgl", { antialias: false, preserveDrawingBuffer: false });
+  if (!gl) { $("err").textContent = "This browser doesn't support WebGL, so the simulation can't be shown."; }
+  const vs = "attribute vec2 p; void main(){ gl_Position = vec4(p,0.0,1.0); }";
+  const fs = `
+precision highp float;
+uniform sampler2D uTex;
+uniform vec2 uTexSize, uRes;
+uniform float uDiscR, uMode, uI, uF, uP, uCamTan, uRing, uPx, uHas;
+const vec3 ACC = vec3(1.0, 0.83, 0.0);
+float theta(float r, float m) {
+  if (m < 0.5) return r * uI * 0.5;
+  if (m < 1.5) return r * uF * 0.5;
+  if (r < uP) return r * uI * 0.5;
+  float u = (r - uP) / (1.0 - uP);
+  float a = uP * uI * 0.5, b = (1.0 - uP) * uI * 0.5, c = max(uF - uI, 0.0) * 0.5;
+  return a + b * u + c * u * u;
+}
+vec3 sampleAt(vec2 fc, float m) {
+  vec2 d = fc - 0.5 * uRes;
+  float len = length(d);
+  float r = len / uDiscR;
+  vec2 dir = len > 0.0 ? d / len : vec2(0.0);
+  float th = theta(r, m);
+  if (th > 1.55) return vec3(0.0);
+  float rad = tan(th) / uCamTan;
+  float L = max(uTexSize.x, uTexSize.y);
+  vec2 uv = vec2(0.5 + dir.x * rad * 0.5 * L / uTexSize.x, 0.5 - dir.y * rad * 0.5 * L / uTexSize.y);
+  if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) return vec3(0.06);
+  return texture2D(uTex, uv).rgb;
+}
+float lum(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
+void main() {
+  vec2 fc = gl_FragCoord.xy;
+  float r = length(fc - 0.5 * uRes) / uDiscR;
+  if (r > 1.0 || uHas < 0.5) {
+    float rim = 1.0 - smoothstep(0.0, 2.0 * uPx, abs(r - 1.0) * uDiscR);
+    gl_FragColor = vec4(vec3(0.18) * rim, 1.0);
+    return;
+  }
+  vec3 col;
+  if (uMode > 2.5) {
+    col = sampleAt(fc, 0.0) * 0.8;
+    float o = 1.5 * uPx;
+    float gx = lum(sampleAt(fc + vec2(o, 0.0), 1.0)) - lum(sampleAt(fc - vec2(o, 0.0), 1.0));
+    float gy = lum(sampleAt(fc + vec2(0.0, o), 1.0)) - lum(sampleAt(fc - vec2(0.0, o), 1.0));
+    float e = smoothstep(0.09, 0.22, length(vec2(gx, gy)));
+    col = mix(col, ACC, e);
+  } else {
+    col = sampleAt(fc, uMode);
+  }
+  if (uRing > 0.5 && uMode > 1.5 && uMode < 2.5 && uP > 0.0) {
+    float k = 1.0 - smoothstep(0.6 * uPx, 1.8 * uPx, abs(r - uP) * uDiscR);
+    col = mix(col, ACC, k * 0.9);
+  }
+  col *= 1.0 - smoothstep(1.0 - 2.0 * uPx / uDiscR, 1.0, r);
+  gl_FragColor = vec4(col, 1.0);
+}`;
+  let prog, U = {}, tex;
+  function compile(type, src) {
+    const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+    return s;
+  }
+  if (gl) {
+    prog = gl.createProgram();
+    gl.attachShader(prog, compile(gl.VERTEX_SHADER, vs));
+    gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, fs));
+    gl.linkProgram(prog); gl.useProgram(prog);
+    const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(prog, "p"); gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    ["uTex","uTexSize","uRes","uDiscR","uMode","uI","uF","uP","uCamTan","uRing","uPx","uHas"].forEach(n => U[n] = gl.getUniformLocation(prog, n));
+    tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0,0,0,255]));
+  }
+
+  let dpr = 1;
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = Math.max(1, Math.round(canvas.clientWidth * dpr));
+    const h = Math.max(1, Math.round(canvas.clientHeight * dpr));
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+    st.dirty = true;
+  }
+  new ResizeObserver(resize).observe($("stage"));
+
+  const rad = (deg) => deg * Math.PI / 180;
+  function frame() {
+    requestAnimationFrame(frame);
+    if (!gl) return;
+    const live = st.src === "video" && video.readyState >= 2 && !st.frozen;
+    if (live) {
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      try { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video); } catch (e) {}
+      st.srcW = video.videoWidth || 1; st.srcH = video.videoHeight || 1;
+    } else if (!st.dirty) return;
+    st.dirty = false;
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    gl.uniform1i(U.uTex, 0);
+    gl.uniform2f(U.uTexSize, st.srcW, st.srcH);
+    gl.uniform2f(U.uRes, canvas.width, canvas.height);
+    gl.uniform1f(U.uDiscR, 0.5 * Math.min(canvas.width, canvas.height) * st.D);
+    gl.uniform1f(U.uMode, st.mode);
+    gl.uniform1f(U.uI, rad(st.I));
+    gl.uniform1f(U.uF, rad(Math.max(st.F, st.I)));
+    gl.uniform1f(U.uP, Math.min(st.P, 0.95));
+    gl.uniform1f(U.uCamTan, Math.tan(rad(st.C) / 2));
+    gl.uniform1f(U.uRing, st.ring ? 1 : 0);
+    gl.uniform1f(U.uPx, dpr);
+    gl.uniform1f(U.uHas, st.src ? 1 : 0);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+  requestAnimationFrame(frame);
+
+  // ---------- UI ----------
+  function updateUI() {
+    $("vI").textContent = st.I + "°";
+    $("vF").textContent = st.F + "°";
+    $("vP").textContent = Math.round(st.P * 100) + "%";
+    $("vC").textContent = st.C + "°";
+    $("vD").textContent = Math.round(st.D * 100) + "%";
+    document.querySelectorAll(".modes button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.mode === st.mode)));
+    $("modeDesc").textContent = MODES[st.mode].desc;
+    const show = { I: true, F: st.mode !== 0, P: st.mode === 2, C: true, D: true };
+    document.querySelectorAll(".slider").forEach(s => s.hidden = !show[s.dataset.for]);
+    $("ringWrap").hidden = st.mode !== 2;
+    $("ringWrap").style.display = st.mode !== 2 ? "none" : "";
+    $("hudMode").innerHTML = "<b>" + MODES[st.mode].name + "</b>";
+    let field;
+    if (st.mode === 0) field = "Field shown: " + st.I + "°";
+    else if (st.mode === 2) field = "Sharp: " + Math.round(st.P * st.I) + "°, total: " + Math.max(st.F, st.I) + "°";
+    else field = "Field shown: " + Math.max(st.F, st.I) + "°";
+    if (st.mode !== 0 && st.F > st.C) field += " (camera sees only " + st.C + "°)";
+    $("hudField").textContent = field;
+    st.dirty = true;
+  }
+  document.querySelectorAll(".modes button").forEach(b => b.addEventListener("click", () => { st.mode = +b.dataset.mode; updateUI(); }));
+  const bind = (id, key, scale) => $(id).addEventListener("input", (e) => { st[key] = +e.target.value * (scale || 1); updateUI(); });
+  bind("sI", "I"); bind("sF", "F"); bind("sP", "P", 0.01); bind("sC", "C"); bind("sD", "D", 0.01);
+  $("ring").addEventListener("change", (e) => { st.ring = e.target.checked; updateUI(); });
+  $("toggle").addEventListener("click", () => {
+    const c = $("panel").classList.toggle("collapsed");
+    $("toggle").textContent = c ? "Show settings" : "Hide settings";
+    $("toggle").setAttribute("aria-expanded", String(!c));
+  });
+  $("btnFreeze").addEventListener("click", () => {
+    st.frozen = !st.frozen;
+    $("btnFreeze").textContent = st.frozen ? "Resume" : "Freeze";
+    if (st.src === "video") { if (st.frozen) video.pause(); else video.play().catch(() => {}); }
+  });
+
+  // ---------- Sources ----------
+  function stopStream() { if (st.stream) { st.stream.getTracks().forEach(t => t.stop()); st.stream = null; } }
+  function ready() { $("start").hidden = true; $("start").style.display = "none"; st.dirty = true; }
+
+  async function startCamera(deviceId) {
+    $("err").textContent = "";
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      $("err").textContent = "No camera access here. You can choose a photo or video instead.";
+      return;
+    }
+    stopStream();
+    const size = { width: { ideal: 1920 }, height: { ideal: 1080 } };
+    const constraints = { audio: false, video: deviceId ? Object.assign({ deviceId: { exact: deviceId } }, size) : Object.assign({ facingMode: { ideal: "environment" } }, size) };
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      st.stream = stream; video.removeAttribute("src"); video.srcObject = stream; video.loop = false;
+      await video.play().catch(() => {});
+      st.src = "video"; st.frozen = false; $("btnFreeze").textContent = "Freeze";
+      ready();
+      const track = stream.getVideoTracks()[0];
+      const cur = track.getSettings ? track.getSettings().deviceId : null;
+      const all = await navigator.mediaDevices.enumerateDevices();
+      st.devices = all.filter(d => d.kind === "videoinput");
+      st.devIdx = Math.max(0, st.devices.findIndex(d => d.deviceId === cur));
+      $("btnSwitch").hidden = st.devices.length < 2;
+      const label = track.label || "";
+      $("camName").textContent = label ? "Camera: " + label : "";
+      if (deviceId && /ultra|wide|0\.5/i.test(label)) { st.C = 110; $("sC").value = 110; updateUI(); }
+    } catch (e) {
+      const blocked = e && (e.name === "NotAllowedError" || e.name === "SecurityError");
+      $("err").textContent = blocked
+        ? "Camera access was blocked here. You can choose a photo or video instead."
+        : "The camera didn't open (" + (e && e.name ? e.name : "error") + "). You can choose a photo or video instead.";
+      $("start").hidden = false; $("start").style.display = "";
+    }
+  }
+  $("btnCam").addEventListener("click", () => startCamera());
+  $("btnSwitch").addEventListener("click", () => {
+    if (st.devices.length < 2) return;
+    st.devIdx = (st.devIdx + 1) % st.devices.length;
+    startCamera(st.devices[st.devIdx].deviceId);
+  });
+
+  const pick = () => $("file").click();
+  $("btnFile").addEventListener("click", pick);
+  $("btnFile2").addEventListener("click", pick);
+  $("file").addEventListener("change", (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const url = URL.createObjectURL(f);
+    stopStream();
+    $("camName").textContent = "File: " + f.name;
+    $("btnSwitch").hidden = true;
+    if (f.type.startsWith("video/")) {
+      video.srcObject = null; video.src = url; video.loop = true;
+      video.play().catch(() => {});
+      st.src = "video"; st.frozen = false; $("btnFreeze").textContent = "Freeze";
+      ready();
+    } else {
+      const img = new Image();
+      img.onload = () => {
+        if (!gl) return;
+        video.pause();
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+        st.srcW = img.naturalWidth; st.srcH = img.naturalHeight; st.src = "image";
+        ready();
+      };
+      img.onerror = () => { $("err").textContent = "This file can't be opened. Try a JPG or PNG image."; };
+      img.src = url;
+    }
+    e.target.value = "";
+  });
+
+  updateUI();
+  resize();
+})();
+</script>
+</body>
+</html>
