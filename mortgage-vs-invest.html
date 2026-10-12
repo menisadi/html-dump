@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Prepay the mortgage or invest?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #F3F5F7; --surface: #FFFFFF; --ink: #1A2430; --muted: #5B6B7B; --rule: #D5DCE3; --grid: #E6EBEF;
+  --a: #0F7C78; --b: #B9740A; --c: #5B4FC4;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12181F; --surface: #1A222C; --ink: #E6ECF1; --muted: #93A2B0; --rule: #2C3743; --grid: #232D38;
+    --a: #3CC2BB; --b: #E8A93A; --c: #A198F2;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12181F; --surface: #1A222C; --ink: #E6ECF1; --muted: #93A2B0; --rule: #2C3743; --grid: #232D38;
+  --a: #3CC2BB; --b: #E8A93A; --c: #A198F2;
+}
+*, *::before, *::after { box-sizing: inherit; }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.5 "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+main { max-width: 1180px; margin: 0 auto; padding: 32px 20px 48px; }
+h1 { font: 500 clamp(1.6rem, 3.2vw, 2.2rem)/1.15 "IBM Plex Serif", Georgia, serif; margin: 0 0 6px; letter-spacing: -0.01em; }
+.sub { color: var(--muted); margin: 0 0 28px; max-width: 70ch; }
+.layout { display: grid; grid-template-columns: 300px 1fr; gap: 28px; align-items: start; }
+@media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+
+.controls { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 18px 18px 6px; }
+.ctl { margin-bottom: 18px; }
+.ctl .row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.ctl label { font-weight: 500; font-size: 0.93rem; }
+.ctl output { font-weight: 600; }
+.ctl input[type=range] { width: 100%; margin: 8px 0 0; accent-color: var(--ink); }
+.ctl .hint { color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
+input[type=range]:focus-visible, button:focus-visible { outline: 2px solid var(--a); outline-offset: 3px; }
+
+.verdict { font: 500 1.25rem/1.4 "IBM Plex Serif", Georgia, serif; margin: 0 0 4px; max-width: 62ch; }
+.breakeven { color: var(--muted); margin: 0 0 18px; font-size: 0.92rem; }
+
+.chartbox { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 14px 14px 8px; }
+.charthead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 6px; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.88rem; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 18px; height: 3px; border-radius: 2px; display: inline-block; }
+.toggle { display: inline-flex; border: 1px solid var(--rule); border-radius: 7px; overflow: hidden; }
+.toggle button {
+  font: inherit; font-size: 0.85rem; border: 0; padding: 5px 11px; background: transparent; color: var(--muted); cursor: pointer;
+}
+.toggle button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.chart { position: relative; width: 100%; }
+.chart svg { display: block; width: 100%; height: auto; }
+.tip {
+  position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--rule); border-radius: 7px;
+  padding: 7px 10px; font-size: 0.82rem; white-space: nowrap; display: none; box-shadow: 0 4px 14px rgba(20,30,40,0.12);
+}
+.tip b { display: block; margin-bottom: 2px; }
+.tip .v { display: flex; justify-content: space-between; gap: 14px; }
+
+.tablewrap { overflow-x: auto; margin-top: 22px; }
+table { width: 100%; border-collapse: collapse; min-width: 560px; }
+th, td { padding: 9px 10px; text-align: right; border-bottom: 1px solid var(--rule); }
+th:first-child, td:first-child { text-align: left; color: var(--muted); font-weight: 400; }
+thead th { font-weight: 600; font-size: 0.9rem; vertical-align: bottom; }
+thead th small { display: block; font-weight: 400; color: var(--muted); }
+thead th.a { border-top: 3px solid var(--a); } thead th.b { border-top: 3px solid var(--b); } thead th.c { border-top: 3px solid var(--c); }
+tr.key td { font-weight: 600; }
+td.best { position: relative; }
+td.best::after { content: "best"; font-size: 0.7rem; font-weight: 500; color: var(--surface); background: var(--a); border-radius: 4px; padding: 1px 5px; margin-left: 6px; vertical-align: 1px; }
+.notes { color: var(--muted); font-size: 0.84rem; margin-top: 18px; max-width: 80ch; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Prepay the mortgage, or invest the money?</h1>
+  <p class="sub">Each scenario spends the same amount every month: the original mortgage payment. Whatever isn't paid to the bank goes into stocks, and everything is cashed out at the end of the horizon.</p>
+
+  <div class="layout">
+    <section class="controls" aria-label="Parameters">
+      <div class="ctl"><div class="row"><label for="loan">Mortgage balance</label><output id="loanOut"></output></div>
+        <input type="range" id="loan" min="100000" max="2000000" step="10000" value="500000"></div>
+      <div class="ctl"><div class="row"><label for="apr">Mortgage interest rate</label><output id="aprOut"></output></div>
+        <input type="range" id="apr" min="0" max="10" step="0.05" value="4.35"></div>
+      <div class="ctl"><div class="row"><label for="lump">Lump sum</label><output id="lumpOut"></output></div>
+        <input type="range" id="lump" min="0" max="1000000" step="5000" value="100000"></div>
+      <div class="ctl"><div class="row"><label for="years">Time horizon</label><output id="yearsOut"></output></div>
+        <input type="range" id="years" min="5" max="30" step="1" value="20">
+        <div class="hint">Also the remaining mortgage term.</div></div>
+      <div class="ctl"><div class="row"><label for="ret">Stock return</label><output id="retOut"></output></div>
+        <input type="range" id="ret" min="0" max="15" step="0.1" value="7">
+        <div class="hint">Average annual return, before tax.</div></div>
+      <div class="ctl"><div class="row"><label for="tax">Capital gains tax</label><output id="taxOut"></output></div>
+        <input type="range" id="tax" min="0" max="30" step="1" value="0">
+        <div class="hint">Applied to gains at cash-out. Israel: 25%.</div></div>
+    </section>
+
+    <section aria-live="polite">
+      <p class="verdict" id="verdict"></p>
+      <p class="breakeven" id="breakeven"></p>
+
+      <div class="chartbox">
+        <div class="charthead">
+          <div class="legend">
+            <span><i style="background:var(--a)"></i>A: Invest the lump sum</span>
+            <span><i style="background:var(--b)"></i>B: Prepay, shorter term</span>
+            <span><i style="background:var(--c)"></i>C: Prepay, lower payment</span>
+          </div>
+          <div class="toggle" role="group" aria-label="Chart measure">
+            <button type="button" data-mode="net" aria-pressed="true">Net worth</button>
+            <button type="button" data-mode="port" aria-pressed="false">Portfolio</button>
+          </div>
+        </div>
+        <div class="chart" id="chart"><svg id="svg" role="img" aria-label="Comparison chart"></svg><div class="tip" id="tip"></div></div>
+      </div>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th></th>
+            <th class="a">A<small>Invest lump sum</small></th>
+            <th class="b">B<small>Prepay, shorter term</small></th>
+            <th class="c">C<small>Prepay, lower payment</small></th></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <p class="notes">Net worth on the chart is portfolio value minus remaining mortgage balance, so it shows the three paths on equal footing at every point in time. Mortgage interest compounds monthly; stock returns compound monthly at the equivalent of the annual rate. Total out-of-pocket spending is identical in all three scenarios, and the mortgage is fully paid in all three by the end, so the final value is the whole comparison. Not included: CPI-linked tracks, early-repayment fees, and the fact that stock returns vary from year to year.</p>
+    </section>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const ils = v => (v < 0 ? "−₪" : "₪") + Math.round(Math.abs(v)).toLocaleString("en-US");
+const ilsShort = v => {
+  const a = Math.abs(v), s = v < 0 ? "−₪" : "₪";
+  if (a >= 1e6) return s + (a / 1e6).toFixed(a >= 1e7 ? 0 : 1).replace(/\.0$/, "") + "M";
+  if (a >= 1e3) return s + Math.round(a / 1e3) + "k";
+  return s + Math.round(a);
+};
+const pmt = (L, r, n) => L <= 0 ? 0 : (r === 0 ? L / n : L * r / (1 - Math.pow(1 + r, -n)));
+const fmtMonths = m => { const y = Math.floor(m / 12), mo = m % 12; return y + " yr" + (mo ? " " + mo + " mo" : ""); };
+
+function simulate(p) {
+  const r = p.apr / 12, N = p.years * 12, i = Math.pow(1 + p.ret, 1 / 12) - 1;
+  const P0 = pmt(p.loan, r, N);
+  const extra = Math.max(p.lump - p.loan, 0);
+  const L2 = Math.max(p.loan - p.lump, 0);
+  const P1 = pmt(L2, r, N);
+  const S = {
+    A: { bal: p.loan, port: p.lump, contrib: p.lump, interest: 0, pay: P0, payoff: N, invMonthly: 0, invStart: 0 },
+    B: { bal: L2, port: extra, contrib: extra, interest: 0, pay: P0, payoff: L2 > 0 ? null : 0, invMonthly: P0, invStart: null },
+    C: { bal: L2, port: extra, contrib: extra, interest: 0, pay: P1, payoff: L2 > 0 ? N : 0, invMonthly: P0 - P1, invStart: 1 },
+  };
+  for (const k in S) { S[k].net = [S[k].port - S[k].bal]; S[k].pf = [S[k].port]; }
+  for (let m = 1; m <= N; m++) {
+    for (const k in S) {
+      const s = S[k];
+      s.port *= 1 + i;
+      const due = k === "C" ? P1 : P0;
+      let paid = 0;
+      if (s.bal > 1e-6) {
+        const it = s.bal * r; s.interest += it;
+        paid = Math.min(due, s.bal + it); s.bal = s.bal + it - paid;
+        if (s.bal <= 1e-6) { s.bal = 0; if (k === "B" && s.payoff === null) { s.payoff = m; s.invStart = m + 1; } }
+      }
+      const toInvest = P0 - paid;
+      if (toInvest > 1e-9) { s.port += toInvest; s.contrib += toInvest; }
+      s.net.push(s.port - s.bal); s.pf.push(s.port);
+    }
+  }
+  for (const k in S) {
+    const s = S[k];
+    s.gain = s.port - s.contrib;
+    s.tax = Math.max(s.gain, 0) * p.tax;
+    s.final = s.port - s.tax;
+    s.netResult = s.gain - s.tax - s.interest;
+  }
+  if (S.B.payoff === null) S.B.payoff = N;
+  return { S, P0, P1, N };
+}
+
+function breakEven(p) {
+  const diff = ret => { const { S } = simulate({ ...p, ret }); return S.A.final - Math.max(S.B.final, S.C.final); };
+  let lo = 0, hi = 0.3;
+  if (diff(lo) > 0 || diff(hi) < 0) return null;
+  for (let k = 0; k < 40; k++) { const mid = (lo + hi) / 2; diff(mid) > 0 ? hi = mid : lo = mid; }
+  return (lo + hi) / 2;
+}
+
+let mode = "net", last = null;
+const names = { A: "Investing the lump sum", B: "Prepaying with a shorter term", C: "Prepaying with a lower payment" };
+
+function read() {
+  return { loan: +$("loan").value, apr: +$("apr").value / 100, lump: +$("lump").value,
+           years: +$("years").value, ret: +$("ret").value / 100, tax: +$("tax").value / 100 };
+}
+
+function update() {
+  const p = read();
+  $("loanOut").textContent = ils(p.loan);
+  $("aprOut").textContent = (p.apr * 100).toFixed(2) + "%";
+  $("lumpOut").textContent = ils(p.lump);
+  $("yearsOut").textContent = p.years + " years";
+  $("retOut").textContent = (p.ret * 100).toFixed(1) + "%";
+  $("taxOut").textContent = Math.round(p.tax * 100) + "%";
+
+  const res = simulate(p); last = res;
+  const { S, P0, N } = res;
+  const order = ["A", "B", "C"].sort((x, y) => S[y].final - S[x].final);
+  const best = order[0], second = order[1];
+  const gap = S[best].final - S[second].final;
+  $("verdict").textContent = gap < 1
+    ? `Over ${p.years} years, all three options end up in the same place.`
+    : `Over ${p.years} years, ${names[best].toLowerCase()} ends with ${ils(S[best].final)}, ${ils(gap)} more than the next option.`;
+  const be = breakEven(p);
+  $("breakeven").textContent = p.lump === 0 ? "Set a lump sum to compare the options."
+    : be === null ? "" : `Investing the lump sum wins when stocks return more than ${(be * 100).toFixed(2)}% a year (before tax).`;
+
+  const rows = [
+    ["Monthly mortgage payment", k => ils(S[k].pay)],
+    ["Mortgage paid off after", k => S[k].payoff === 0 ? "immediately" : fmtMonths(S[k].payoff)],
+    ["Monthly investing", k => {
+      if (k === "A") return S.A.contrib > 0 ? "lump sum only" : "—";
+      if (k === "B") return S.B.payoff >= N ? "—" : `${ils(P0)} from month ${S.B.payoff + 1}`;
+      return S.C.invMonthly > 0.5 ? ils(S.C.invMonthly) : "—";
+    }],
+    ["Total mortgage interest", k => ils(S[k].interest)],
+    ["Total put into stocks", k => ils(S[k].contrib)],
+    ["Investment gains", k => ils(S[k].gain)],
+    ...(p.tax > 0 ? [["Capital gains tax", k => ils(-S[k].tax)]] : []),
+    ["Value at the end", k => ils(S[k].final), true, "final"],
+    ["Net: gains − tax − interest", k => ils(S[k].netResult), true],
+  ];
+  $("tbody").innerHTML = rows.map(([label, f, key, field]) =>
+    `<tr class="${key ? "key" : ""}"><td>${label}</td>${["A", "B", "C"].map(k =>
+      `<td class="${field === "final" && k === best && gap >= 1 ? "best" : ""}">${f(k)}</td>`).join("")}</tr>`).join("");
+
+  draw();
+}
+
+function niceStep(range, target) {
+  const raw = range / target, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const n = raw / mag;
+  return (n < 1.5 ? 1 : n < 3 ? 2 : n < 7 ? 5 : 10) * mag;
+}
+
+let geom = null;
+function draw() {
+  if (!last) return;
+  const { S, N } = last;
+  const box = $("chart"), svg = $("svg");
+  const W = Math.max(box.clientWidth, 300), H = Math.round(Math.min(Math.max(W * 0.5, 260), 420));
+  const m = { l: 62, r: 14, t: 12, b: 32 };
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const key = mode === "net" ? "net" : "pf";
+  let lo = Infinity, hi = -Infinity;
+  for (const k in S) for (const v of S[k][key]) { if (v < lo) lo = v; if (v > hi) hi = v; }
+  lo = Math.min(lo, 0); hi = Math.max(hi, 0);
+  const step = niceStep(hi - lo || 1, 6);
+  lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+  const x = t => m.l + (t / N) * (W - m.l - m.r);
+  const y = v => m.t + (1 - (v - lo) / (hi - lo)) * (H - m.t - m.b);
+  geom = { x, y, m, W, H, N, key };
+
+  let g = "";
+  for (let v = lo; v <= hi + step / 2; v += step) {
+    g += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(${Math.abs(v) < step / 2 ? "--rule" : "--grid"})" />`;
+    g += `<text x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${ilsShort(v)}</text>`;
+  }
+  const yrs = N / 12, ys = yrs <= 10 ? 1 : yrs <= 20 ? 2 : 5;
+  for (let t = 0; t <= yrs; t += ys)
+    g += `<text x="${x(t * 12)}" y="${H - 10}" text-anchor="middle" font-size="11" fill="var(--muted)">${t === 0 ? "Year 0" : t}</text>`;
+  const colors = { A: "var(--a)", B: "var(--b)", C: "var(--c)" };
+  for (const k of ["B", "C", "A"]) {
+    const d = S[k][key].map((v, t) => (t ? "L" : "M") + x(t).toFixed(1) + " " + y(v).toFixed(1)).join("");
+    g += `<path d="${d}" fill="none" stroke="${colors[k]}" stroke-width="2.4" stroke-linejoin="round" />`;
+  }
+  if (S.B.payoff > 0 && S.B.payoff < N) {
+    const px = x(S.B.payoff), py = y(S.B[key][S.B.payoff]);
+    g += `<circle cx="${px}" cy="${py}" r="4" fill="var(--surface)" stroke="var(--b)" stroke-width="2" />`;
+    g += `<text x="${px}" y="${py - 10}" text-anchor="middle" font-size="11" fill="var(--b)">B paid off</text>`;
+  }
+  g += `<line id="cross" y1="${m.t}" y2="${H - m.b}" stroke="var(--muted)" stroke-dasharray="3 3" visibility="hidden" />`;
+  g += `<g id="dots"></g>`;
+  svg.innerHTML = g;
+}
+
+function hover(e) {
+  if (!geom || !last) return;
+  const svg = $("svg"), rect = svg.getBoundingClientRect();
+  const sx = (e.clientX - rect.left) * (geom.W / rect.width);
+  const t = Math.round(((sx - geom.m.l) / (geom.W - geom.m.l - geom.m.r)) * geom.N);
+  const tip = $("tip"), cross = $("cross");
+  if (t < 0 || t > geom.N) { tip.style.display = "none"; cross.setAttribute("visibility", "hidden"); $("dots").innerHTML = ""; return; }
+  const cx = geom.x(t);
+  cross.setAttribute("x1", cx); cross.setAttribute("x2", cx); cross.setAttribute("visibility", "visible");
+  const { S } = last, colors = { A: "var(--a)", B: "var(--b)", C: "var(--c)" };
+  $("dots").innerHTML = ["A", "B", "C"].map(k => `<circle cx="${cx}" cy="${geom.y(S[k][geom.key][t])}" r="3.5" fill="${colors[k]}" />`).join("");
+  const label = t === 0 ? "Start" : fmtMonths(t);
+  tip.innerHTML = `<b>${label}</b>` + ["A", "B", "C"].map(k =>
+    `<div class="v"><span style="color:${colors[k]}">${k}</span><span>${ils(S[k][geom.key][t])}</span></div>`).join("");
+  tip.style.display = "block";
+  const px = cx * (rect.width / geom.W);
+  const tw = tip.offsetWidth;
+  tip.style.left = (px + 14 + tw > rect.width ? px - tw - 14 : px + 14) + "px";
+  tip.style.top = "14px";
+}
+
+["loan", "apr", "lump", "years", "ret", "tax"].forEach(id => $(id).addEventListener("input", update));
+document.querySelectorAll(".toggle button").forEach(b => b.addEventListener("click", () => {
+  mode = b.dataset.mode;
+  document.querySelectorAll(".toggle button").forEach(o => o.setAttribute("aria-pressed", o === b));
+  draw();
+}));
+$("svg").addEventListener("pointermove", hover);
+$("svg").addEventListener("pointerleave", () => { $("tip").style.display = "none"; const c = $("cross"); if (c) c.setAttribute("visibility", "hidden"); $("dots").innerHTML = ""; });
+new ResizeObserver(() => draw()).observe($("chart"));
+update();
+</script>
+</body>
+</html>
