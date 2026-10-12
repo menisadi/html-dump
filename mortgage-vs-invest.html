@@ -34,8 +34,14 @@ body {
 main { max-width: 1180px; margin: 0 auto; padding: 32px 20px 48px; }
 h1 { font: 500 clamp(1.6rem, 3.2vw, 2.2rem)/1.15 "IBM Plex Serif", Georgia, serif; margin: 0 0 6px; letter-spacing: -0.01em; }
 .sub { color: var(--muted); margin: 0 0 28px; max-width: 70ch; }
-.layout { display: grid; grid-template-columns: 300px 1fr; gap: 28px; align-items: start; }
-@media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+.layout {
+  display: grid; grid-template-columns: 300px minmax(0, 1fr); grid-template-rows: auto 1fr; gap: 22px 28px; align-items: start;
+  grid-template-areas: "controls top" "controls bottom";
+}
+.controls { grid-area: controls; } .results-top { grid-area: top; } .results-bottom { grid-area: bottom; }
+@media (max-width: 860px) {
+  .layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; grid-template-areas: "top" "controls" "bottom"; }
+}
 
 .controls { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 18px 18px 6px; }
 .ctl { margin-bottom: 18px; }
@@ -68,7 +74,7 @@ input[type=range]:focus-visible, button:focus-visible { outline: 2px solid var(-
 .tip b { display: block; margin-bottom: 2px; }
 .tip .v { display: flex; justify-content: space-between; gap: 14px; }
 
-.tablewrap { overflow-x: auto; margin-top: 22px; }
+.tablewrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; min-width: 560px; }
 th, td { padding: 9px 10px; text-align: right; border-bottom: 1px solid var(--rule); }
 th:first-child, td:first-child { text-align: left; color: var(--muted); font-weight: 400; }
@@ -105,7 +111,7 @@ td.best::after { content: "best"; font-size: 0.7rem; font-weight: 500; color: va
         <div class="hint">Applied to gains at cash-out. Israel: 25%.</div></div>
     </section>
 
-    <section aria-live="polite">
+    <section class="results-top" aria-live="polite">
       <p class="verdict" id="verdict"></p>
       <p class="breakeven" id="breakeven"></p>
 
@@ -123,7 +129,9 @@ td.best::after { content: "best"; font-size: 0.7rem; font-weight: 500; color: va
         </div>
         <div class="chart" id="chart"><svg id="svg" role="img" aria-label="Comparison chart"></svg><div class="tip" id="tip"></div></div>
       </div>
+    </section>
 
+    <section class="results-bottom" aria-live="polite">
       <div class="tablewrap">
         <table>
           <thead><tr><th></th>
