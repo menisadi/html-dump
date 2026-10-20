@@ -551,15 +551,15 @@ const activities = [
 
   { day:'שלישי',  kid:'נטע',  act:'כינור',          start:'16:45', end:'17:30' },
   { day:'שלישי',  kid:'אורי', act:'חרבות וכשפים',  start:'16:45', end:'18:15' },
-  { day:'שלישי',  kid:'יובל', act:'שחייה',          start:'17:30', end:'18:30', shared:true, col:1 },
-  { day:'שלישי',  kid:'עופר', act:'שחייה',          start:'17:30', end:'18:30', shared:true, col:2 },
+  { day:'שלישי',  kid:'יובל', act:'שחייה',          start:'17:30', end:'18:30', shared:true },
+  { day:'שלישי',  kid:'עופר', act:'שחייה',          start:'17:30', end:'18:30', shared:true },
   { day:'שלישי',  kid:'אורי', act:'חליל צד',        start:'18:45', end:'19:30' },
   { day:'שלישי',  kid:'אורי', act:'נובה-קיד',      start:'20:30', end:'20:55' },
 
-  { day:'רביעי',  kid:'יובל', act:'קפוארה',        start:'16:15', end:'17:00', col:1 },
-  { day:'רביעי',  kid:'עופר', act:'כדורסל',        start:'15:30', end:'16:30', col:2 },
+  { day:'רביעי',  kid:'יובל', act:'קפוארה',        start:'16:15', end:'17:00' },
+  { day:'רביעי',  kid:'עופר', act:'כדורסל',        start:'15:30', end:'16:30' },
   { day:'רביעי',  kid:'עופר', act:'חצוצרה',         start:'17:00', end:'17:45' },
-  { day:'רביעי',  kid:'נטע',  act:'תזמורת',        start:'16:00', end:'16:45', col:3 },
+  { day:'רביעי',  kid:'נטע',  act:'תזמורת',        start:'16:00', end:'16:45' },
   { day:'רביעי',  kid:'נטע',  act:'קפוארה',        start:'18:45', end:'19:45' },
 
   { day:'חמישי',  kid:'יובל', act:'כדורגל',         start:'16:00', end:'17:15' },
@@ -583,9 +583,9 @@ function visibleUnscheduled(){
 }
 
 // ---------- time helpers ----------
-const DAY_START = 13*60; // 13:00
+const DAY_START = 15*60; // 15:00
 const ROW_MIN = 5;
-const TOTAL_ROWS = (21*60 - DAY_START) / ROW_MIN; // 96 rows, until 21:00
+const TOTAL_ROWS = (21*60 - DAY_START) / ROW_MIN; // 72 rows, until 21:00
 
 function toMin(t){
   const [h,m] = t.split(':').map(Number);
@@ -594,6 +594,34 @@ function toMin(t){
 
 function rowOf(t){
   return Math.round((toMin(t) - DAY_START) / ROW_MIN) + 1;
+}
+
+// Assign each item a column so overlapping items sit side by side.
+// Sets a._col (1-based) and a._last (item may stretch to the day's right edge).
+// Returns the number of columns needed for the day.
+function layoutColumns(items){
+  const sorted = [...items].sort((a,b) => toMin(a.start) - toMin(b.start));
+  let maxCol = 1;
+  let cluster = [], clusterEnd = -1;
+
+  function flush(){
+    const k = Math.max(0, ...cluster.map(a => a._col));
+    cluster.forEach(a => a._last = a._col === k);
+    maxCol = Math.max(maxCol, k);
+    cluster = [];
+  }
+
+  sorted.forEach(a => {
+    if(cluster.length && toMin(a.start) >= clusterEnd) flush();
+    const taken = new Set(cluster.filter(o => toMin(o.end) > toMin(a.start)).map(o => o._col));
+    let c = 1;
+    while(taken.has(c)) c++;
+    a._col = c;
+    cluster.push(a);
+    clusterEnd = Math.max(clusterEnd, toMin(a.end));
+  });
+  flush();
+  return maxCol;
 }
 
 // ---------- build grid view ----------
@@ -606,7 +634,7 @@ function buildGrid(){
 
   // time axis
   html += `<div class="time-axis">`;
-  for(let h=13; h<=21; h++){
+  for(let h=15; h<=21; h++){
     const r = rowOf(h + ':00');
     html += `<div class="time-label" style="grid-row:${r}">${h}:00</div>`;
   }
@@ -615,14 +643,12 @@ function buildGrid(){
   // day columns
   days.forEach(day => {
     const dayItems = visibleActivities().filter(a => a.day === day);
-    const maxCol = Math.max(2, ...dayItems.map(a => a.col || 0));
+    const maxCol = layoutColumns(dayItems);
     html += `<div class="day-col" data-cols="${maxCol}">`;
     dayItems.forEach(a => {
       const rs = rowOf(a.start);
       const re = rowOf(a.end);
-      const colStyle = a.col
-        ? `grid-column:${a.col} / ${a.col + 1}`
-        : `grid-column:1 / ${maxCol + 1}`;
+      const colStyle = `grid-column:${a._col} / ${a._last ? maxCol + 1 : a._col + 1}`;
       html += `<div class="block ${kidClass[a.kid]} ${a.shared?'shared':''}" style="grid-row:${rs} / ${re}; ${colStyle}">
         <span class="kid">${a.kid}</span>
         <span class="act">${a.act}</span>
