@@ -26,6 +26,7 @@
   li.r1 .bar i { background:var(--gold); } li.r2 .bar i { background:var(--silver); } li.r3 .bar i { background:var(--bronze); }
   .l1 { grid-column:2 / 4; color:var(--muted); font-size:.8rem; }
   .foot { margin-top:18px; color:var(--muted); font-size:.75rem; text-align:center; }
+  .toggle { display:flex; align-items:center; gap:6px; color:var(--muted); font-size:.85rem; margin-bottom:10px; cursor:pointer; width:fit-content; }
   li.msg { display:block; text-align:center; color:var(--muted); padding:30px 0; }
 </style>
 </head>
@@ -35,6 +36,7 @@
   <div class="group">חתולים</div>
   <div class="meta" id="meta"></div>
   <div class="gov" id="gov" hidden></div>
+  <label class="toggle"><input type="checkbox" id="showPolls" checked> הצג סקרים</label>
   <ol id="list"><li class="msg">טוען…</li></ol>
   <div class="foot">שגיאה נמוכה יותר = ניחוש קרוב יותר לסקרים</div>
 </main>
@@ -60,6 +62,26 @@ function parseCSV(text) {
 const MEDALS = ["🥇", "🥈", "🥉"];
 const $ = id => document.getElementById(id);
 
+let allRows = [];
+
+function render() {
+  const rows = $("showPolls").checked ? allRows : allRows.filter(p => !p.poll);
+  const max = Math.max(...rows.map(p => p.err));
+  let place = 0;
+  $("list").innerHTML = rows.map(p => {
+    const m = p.poll ? -1 : place++;
+    return `
+      <li class="${m >= 0 && m < 3 ? "r" + (m + 1) : ""}">
+        <div class="rank">${MEDALS[m] || p.rank}</div>
+        <div class="name"></div>
+        <div class="err">${p.err.toFixed(2)}</div>
+        <div class="bar"><i style="width:${Math.max(4, (p.err / max) * 100)}%"></i></div>
+        <div class="l1">סטייה כוללת: ${p.l1}</div>
+      </li>`;
+  }).join("");
+  document.querySelectorAll(".name").forEach((el, i) => el.textContent = rows[i].name);
+}
+
 async function load() {
   try {
     const res = await fetch(CSV_URL, { cache: "no-store" });
@@ -67,18 +89,10 @@ async function load() {
     const rows = parseCSV(await res.text());
     $("meta").textContent = rows[1]?.[1] || "";
     if (rows[2]?.[1]) { $("gov").textContent = rows[2][1]; $("gov").hidden = false; }
-    const players = rows.slice(4).filter(r => r[2] && r[1] && !isNaN(parseFloat(r[3])))
-      .map(r => ({ rank: r[1], name: r[2], err: parseFloat(r[3]), l1: r[4] }));
-    const max = Math.max(...players.map(p => p.err));
-    $("list").innerHTML = players.map((p, i) => `
-      <li class="${i < 3 ? "r" + (i + 1) : ""}">
-        <div class="rank">${MEDALS[i] || p.rank}</div>
-        <div class="name"></div>
-        <div class="err">${p.err.toFixed(2)}</div>
-        <div class="bar"><i style="width:${Math.max(4, (p.err / max) * 100)}%"></i></div>
-        <div class="l1">סטייה כוללת: ${p.l1}</div>
-      </li>`).join("");
-    document.querySelectorAll(".name").forEach((el, i) => el.textContent = players[i].name);
+    allRows = rows.slice(4).filter(r => r[2] && r[1] && !isNaN(parseFloat(r[3])))
+      .map(r => ({ rank: r[1], name: r[2], err: parseFloat(r[3]), l1: r[4], poll: isNaN(parseInt(r[1])) }));
+    render();
+    $("showPolls").addEventListener("change", render);
   } catch (e) {
     $("list").innerHTML = '<li class="msg">לא הצלחנו לטעון את הנתונים. נסו לרענן.</li>';
   }
