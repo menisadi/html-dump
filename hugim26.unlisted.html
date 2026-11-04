@@ -429,16 +429,11 @@ body.show-agenda .agenda-view{ display:flex; }
 .agenda-print{ display:none; }
 
 @media print{
-  body *{ visibility:hidden; }
-  .agenda-print, .agenda-print *{ visibility:visible; }
-  .agenda-print{
-    display:block;
-    position:absolute;
-    inset-inline-start:0;
-    top:0;
-    width:100%;
-    padding:20px;
-  }
+  @page{ size:A4; margin:12mm; }
+  body{ padding:0; background:#fff; color:#000; }
+  .agenda-print .subtitle{ color:#555; }
+  .no-print{ display:none !important; }
+  .agenda-print{ display:block; }
   .agenda-print h1{
     font-size:22px;
     margin-bottom:4px;
@@ -463,6 +458,7 @@ body.show-agenda .agenda-view{ display:flex; }
     padding:4px 0;
   }
   .agenda-row .who{ font-weight:700; }
+  .agenda-row .when{ direction:ltr; unicode-bidi:isolate; }
   .agenda-empty{
     font-size:12px;
     color:#666;
@@ -738,7 +734,7 @@ function buildAgenda(){
       html += `<div class="agenda-empty">אין חוגים</div>`;
     } else {
       items.forEach(a => {
-        html += `<div class="agenda-row"><span class="who">${a.kid} — ${a.act}</span><span>${a.start}–${a.end}</span></div>`;
+        html += `<div class="agenda-row"><span class="who">${a.kid} — ${a.act}</span><span class="when">${a.start}–${a.end}</span></div>`;
       });
     }
     html += `</div>`;
