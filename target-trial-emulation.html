@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Target trial emulation, explained twice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Public+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #F3F6F7;
+    --paper: #FFFFFF;
+    --ink: #1C2833;
+    --muted: #586874;
+    --rule: #D5DDE2;
+    --accent: #0E6B70;
+    --accent-soft: #DCEFF0;
+    --warn: #A86A12;
+    --warn-soft: #F7EAD3;
+    --gray-bar: #9AA7B0;
+    --serif: "Literata", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    --sans: "Public Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #11171C;
+      --paper: #182128;
+      --ink: #E3E9ED;
+      --muted: #9BAAB5;
+      --rule: #2B3741;
+      --accent: #5EC3C4;
+      --accent-soft: #173A3D;
+      --warn: #E2A94C;
+      --warn-soft: #3A2E1A;
+      --gray-bar: #67747E;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #11171C;
+    --paper: #182128;
+    --ink: #E3E9ED;
+    --muted: #9BAAB5;
+    --rule: #2B3741;
+    --accent: #5EC3C4;
+    --accent-soft: #173A3D;
+    --warn: #E2A94C;
+    --warn-soft: #3A2E1A;
+    --gray-bar: #67747E;
+  }
+  *, *::before, *::after { box-sizing: inherit; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 1.0625rem;
+    line-height: 1.68;
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0 0 auto;
+    height: env(safe-area-inset-top, 0px);
+    z-index: 10;
+    background: var(--paper);
+  }
+
+  .wrap { max-width: 46rem; margin: 0 auto; padding: 0 1.25rem; }
+
+  header.masthead {
+    background: var(--paper);
+    border-bottom: 1px solid var(--rule);
+  }
+  header.masthead .wrap { padding-top: 3rem; padding-bottom: 0; }
+  h1 {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: clamp(2rem, 6vw, 3.1rem);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin: 0 0 1rem;
+  }
+  .lede {
+    font-size: 1.2rem;
+    line-height: 1.55;
+    color: var(--muted);
+    margin: 0 0 2.25rem;
+    max-width: 36rem;
+  }
+
+  /* Tabs */
+  .tabbar {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 5;
+    background: var(--paper);
+    border-bottom: 1px solid var(--rule);
+  }
+  .tabs { display: flex; gap: 0.25rem; }
+  .tab {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 1rem;
+    padding: 0.9rem 1rem 0.8rem;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -1px;
+    text-align: left;
+    line-height: 1.25;
+  }
+  .tab small {
+    display: block;
+    font-weight: 500;
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-top: 0.15rem;
+  }
+  .tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+  .tab:hover { color: var(--ink); }
+  .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 4px; }
+  .tabs .tab:first-child { padding-left: 0; }
+
+  main { padding: 2.5rem 0 4rem; }
+  [role="tabpanel"][hidden] { display: none; }
+
+  h2 {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 1.45rem;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    margin: 3rem 0 0.75rem;
+  }
+  h2:first-child { margin-top: 0; }
+  h3 {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin: 2rem 0 0.5rem;
+  }
+  p { margin: 0 0 1rem; }
+  ul, ol { padding-left: 1.3rem; margin: 0 0 1rem; }
+  li { margin-bottom: 0.45rem; }
+  li::marker { color: var(--accent); }
+  strong { font-weight: 600; }
+  var, .math { font-style: italic; font-family: var(--serif); }
+  sup, sub { line-height: 0; }
+
+  .oneliner {
+    border-left: 3px solid var(--accent);
+    padding: 0.25rem 0 0.25rem 1.1rem;
+    font-size: 1.2rem;
+    line-height: 1.55;
+    margin: 0 0 2rem;
+  }
+
+  .note {
+    background: var(--accent-soft);
+    border-radius: 6px;
+    padding: 1rem 1.2rem;
+    margin: 1.5rem 0;
+  }
+  .note p:last-child { margin-bottom: 0; }
+
+  /* Protocol table */
+  .scroll-x { overflow-x: auto; margin: 1.25rem 0 1.75rem; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 34rem;
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+  th, td { text-align: left; vertical-align: top; padding: 0.65rem 0.75rem 0.65rem 0; border-bottom: 1px solid var(--rule); }
+  th { font-family: var(--sans); font-weight: 600; font-size: 0.85rem; color: var(--muted); }
+  td:first-child { font-family: var(--sans); font-weight: 600; font-size: 0.9rem; width: 26%; }
+  tr.key td { background: var(--warn-soft); }
+  tr.key td:first-child { padding-left: 0.5rem; }
+
+  /* Figures */
+  figure { margin: 1.75rem 0 2rem; }
+  figure .canvas {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 1rem;
+    overflow-x: auto;
+  }
+  figure svg { display: block; width: 100%; min-width: 540px; height: auto; }
+  figcaption { font-size: 0.92rem; color: var(--muted); margin-top: 0.6rem; line-height: 1.5; }
+
+  svg text { font-family: var(--sans); fill: var(--ink); }
+  svg .lbl { font-size: 13px; font-weight: 600; }
+  svg .small { font-size: 11.5px; fill: var(--muted); }
+  svg .axis { stroke: var(--rule); stroke-width: 1.5; }
+  svg .tick { font-size: 11px; fill: var(--muted); }
+  svg .bar-gray { fill: var(--gray-bar); }
+  svg .bar-accent { fill: var(--accent); }
+  svg .bar-warn { fill: url(#hatch); stroke: var(--warn); stroke-width: 1.5; }
+  svg .hatchline { stroke: var(--warn); stroke-width: 2; }
+  svg .death { stroke: var(--ink); stroke-width: 2.5; stroke-linecap: round; }
+  svg .marker { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 3 3; }
+
+  /* Mortality bars */
+  .bars { display: grid; gap: 0.7rem; margin: 1.25rem 0 0.5rem; }
+  .barrow { display: grid; grid-template-columns: 9.5rem 1fr; align-items: center; gap: 0.75rem; font-family: var(--sans); font-size: 0.9rem; }
+  .barrow .track { background: var(--bg); border-radius: 4px; height: 1.9rem; position: relative; }
+  .barrow .fill { height: 100%; border-radius: 4px; display: flex; align-items: center; justify-content: flex-end; padding-right: 0.5rem; font-weight: 700; color: #fff; font-size: 0.9rem; }
+  .fill.treated { background: var(--accent); width: 28%; }
+  .fill.untreated { background: var(--gray-bar); width: 75%; }
+  :root[data-theme="dark"] .barrow .fill { color: #0F1418; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .barrow .fill { color: #0F1418; } }
+
+  .calc {
+    font-size: 0.97rem;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 1rem 1.2rem 0.4rem;
+    margin: 1.25rem 0;
+  }
+
+  footer { border-top: 1px solid var(--rule); color: var(--muted); font-size: 0.9rem; padding: 1.5rem 0 2.5rem; }
+
+  @media (max-width: 520px) {
+    body { font-size: 1rem; }
+    .tab { font-size: 0.95rem; padding: 0.8rem 0.6rem 0.7rem; }
+    .barrow { grid-template-columns: 7rem 1fr; font-size: 0.82rem; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .fill { transition: width 0.6s ease-out; }
+  }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <h1>Target trial emulation</h1>
+    <p class="lede">How to analyze medical records as if they came from a randomized trial: write the trial’s protocol first, then make the analysis follow it, step by step.</p>
+  </div>
+</header>
+
+<div class="tabbar">
+  <div class="wrap">
+    <div class="tabs" role="tablist" aria-label="Choose an explanation">
+      <button class="tab" role="tab" id="tab-technical" aria-controls="panel-technical" data-view="technical" aria-selected="true">
+        Technical
+        <small>Potential outcomes, weighting, bandits</small>
+      </button>
+      <button class="tab" role="tab" id="tab-plain" aria-controls="panel-plain" data-view="plain-language" aria-selected="false" tabindex="-1">
+        Plain language
+        <small>No equations, clinical examples</small>
+      </button>
+    </div>
+  </div>
+</div>
+
+<main>
+  <div class="wrap">
+
+    <!-- ===================== TECHNICAL ===================== -->
+    <section role="tabpanel" id="panel-technical" aria-labelledby="tab-technical" tabindex="0">
+
+      <h2>The core idea</h2>
+      <p>Start with potential outcomes. For each person and each treatment strategy <var>a</var>, there’s a counterfactual outcome <var>Y</var><sup><var>a</var></sup>. The quantity you want is something like E[<var>Y</var><sup><var>a</var>=1</sup>] − E[<var>Y</var><sup><var>a</var>=0</sup>]. To get it, you also have to say in whom, starting when, and measured over what period.</p>
+      <p>A randomized trial gets this almost for free. Randomization makes <var>A</var> independent of the potential outcomes, so a simple difference in means is unbiased. With observational data you instead need three assumptions:</p>
+      <ul>
+        <li><strong>Conditional exchangeability:</strong> <var>Y</var><sup><var>a</var></sup> ⊥ <var>A</var> | <var>L</var>, meaning no unmeasured confounding given covariates <var>L</var>.</li>
+        <li><strong>Positivity:</strong> every covariate profile has a nonzero chance of each treatment.</li>
+        <li><strong>Consistency:</strong> the treatment is well defined, so <var>Y</var><sup><var>a</var></sup> is the outcome you actually see when <var>A</var> = <var>a</var>.</li>
+      </ul>
+      <p>Most of the causal inference literature is about these assumptions. Target trial emulation points out something less obvious: a large share of famous observational failures happened even where exchangeability was plausible. The cause was that the estimand was never pinned down, and the analysis quietly answered a different question, often a nonsensical one. The fix is to write the protocol of the randomized trial you wish you could run, and then make the data analysis follow it exactly.</p>
+
+      <h2>Trial-design concepts you may be missing</h2>
+      <div class="scroll-x">
+        <table>
+          <thead>
+            <tr><th>Protocol element</th><th>In a real trial</th><th>In the emulation</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Eligibility</td><td>Who can enroll, checked at baseline</td><td>Same criteria, using only data available at time zero</td></tr>
+            <tr><td>Treatment strategies</td><td>E.g., “start drug X now” vs. “don’t start”</td><td>The same strategies, defined precisely enough to classify each person’s data</td></tr>
+            <tr><td>Assignment</td><td>Randomized</td><td>Assumed random given <var>L</var>, handled by adjustment or weighting</td></tr>
+            <tr class="key"><td>Time zero</td><td>Randomization day, when eligibility, assignment and follow-up all start</td><td>Must be chosen so these three coincide (this is the crux)</td></tr>
+            <tr><td>Outcome and follow-up</td><td>Prespecified endpoint and window</td><td>Same</td></tr>
+            <tr><td>Causal contrast</td><td>Intention-to-treat (ITT) and/or per-protocol</td><td>Observational analogs of each</td></tr>
+            <tr><td>Analysis plan</td><td>Prespecified</td><td>Prespecified, including the confounders adjusted for</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Two trial concepts are worth getting straight:</p>
+      <ul>
+        <li><strong>ITT vs. per-protocol.</strong> ITT is the effect of being <em>assigned</em> to a strategy, regardless of whether you stuck with it. Per-protocol is the effect of actually <em>following</em> the strategy. In observational data there’s no assignment, so the closest analog to ITT is the effect of <em>initiating</em> treatment. The per-protocol effect requires adjusting for adherence after baseline, and adherence is affected by time-varying confounders that are themselves affected by past treatment. That’s exactly the situation where you need g-methods such as IP weighting or the g-formula, rather than ordinary regression.</li>
+        <li><strong>Time zero.</strong> In a trial, the moment of randomization is also when eligibility is confirmed and when the clock starts. Observational analyses often let these drift apart, and that drift is where most of the bias comes from.</li>
+      </ul>
+
+      <h2>Example 1: Immortal time bias as leakage</h2>
+      <p>You can think of immortal time bias as look-ahead leakage: classifying people by something that only becomes known after the clock starts.</p>
+      <p>Take a toy setup with a drug that has zero effect.</p>
+      <ul>
+        <li>1,000 patients are diagnosed at month 0, and each has a 2% chance of dying each month.</li>
+        <li>500 of them are slated to start the drug at month 6. Anyone who dies before then obviously never starts it.</li>
+        <li>The naive analysis compares “ever treated” against “never treated” over 12 months.</li>
+      </ul>
+
+      <div class="figure-slot"></div>
+
+      <div class="calc">
+        <p>Of the 500 slated patients, 500 × 0.98<sup>6</sup> ≈ 443 survive to month 6. These become the “treated” group. The other 57 die before month 6 and get classified as “untreated.”</p>
+        <p>Among the treated, about 443 × (1 − 0.886) ≈ 50 die in months 6 to 12. The untreated group is 500 + 57 = 557 people, with 500 × (1 − 0.98<sup>12</sup>) ≈ 108 deaths plus the 57, so about 165.</p>
+        <div class="bars" aria-label="12-month mortality in the naive analysis">
+          <div class="barrow"><span>“Ever treated”</span><div class="track"><div class="fill treated">11%</div></div></div>
+          <div class="barrow"><span>“Never treated”</span><div class="track"><div class="fill untreated">30%</div></div></div>
+        </div>
+        <p style="color:var(--muted);font-size:0.9rem">12-month mortality in the naive analysis, for a drug that does nothing.</p>
+      </div>
+
+      <p>A useless drug appears to cut mortality by almost two-thirds. The treated group was guaranteed to survive its first 6 months, because surviving was a precondition for being labeled treated. That guaranteed-survival period is the “immortal time.” The same flaw is behind the famous finding that Oscar winners live longer than nominees, which mostly disappears once it’s corrected.</p>
+
+      <h3>The target trial fix</h3>
+      <p>Set time zero at diagnosis. Define the strategies as “start the drug within 6 months” vs. “never start.” Now you hit a problem: at month 0 you can’t tell which strategy a person is following. Someone who dies at month 3 without having started is consistent with <em>both</em> strategies up to that point. The standard solution is <strong>clone–censor–weight</strong>:</p>
+      <ol>
+        <li>Copy every person into both arms.</li>
+        <li>Censor each copy at the moment its data stops agreeing with that arm’s strategy.</li>
+        <li>Use inverse probability of censoring weights to correct for the fact that this censoring isn’t random.</li>
+      </ol>
+      <p>The patient who died at month 3 counts as a death in <em>both</em> arms, and the fake benefit disappears.</p>
+
+      <h2>Example 2: Prevalent users as survivorship selection</h2>
+      <p>This is the hormone replacement therapy story. Observational cohorts compared women <em>currently</em> taking HRT against non-users and found about 30% less heart disease. The Women’s Health Initiative randomized trial found the opposite: risk went up, especially early in treatment.</p>
+      <p>Much of the gap came from who was in the comparison. Current users are a filtered population. Women who had early cardiac events, side effects, or poor tolerance had already stopped or died, and the early period of harm wasn’t observed at all. Conditioning on “still on treatment” is selection on something that happens after treatment started.</p>
+      <p>When Hernán and colleagues reanalyzed the Nurses’ Health Study as an emulated trial of <em>new</em> users, with time zero at initiation, the results moved much closer to the trial’s. That included the early excess risk.</p>
+
+      <h2>Connection to off-policy evaluation</h2>
+      <p>If you know off-policy evaluation from the bandit literature, much of this will feel familiar:</p>
+      <ul>
+        <li>A treatment strategy is a <strong>policy</strong>, mapping a patient’s history to an action. A “dynamic strategy” such as “start when the biomarker crosses a threshold” is just a non-trivial policy.</li>
+        <li>The observational data are logs generated by an unknown <strong>behavior policy</strong>, namely the doctors.</li>
+        <li>IP weighting is inverse propensity scoring. Estimating the per-protocol effect is estimating a policy’s value from the logs.</li>
+        <li>Clone–censor–weight is IPS for a deterministic target policy. A trajectory contributes only while it agrees with the policy, and gets upweighted by 1/<var>π</var><sub><var>b</var></sub> for the actions that matched.</li>
+        <li>Positivity is the same overlap condition that makes IPS variance blow up when it fails.</li>
+      </ul>
+      <div class="note">
+        <p>The one important difference: in logged bandit data you usually <em>know</em> the logging propensities. Here they have to be estimated, and the no-unmeasured-confounding assumption is doing real work rather than being guaranteed by design.</p>
+      </div>
+
+      <h2>What it doesn’t do</h2>
+      <p>It doesn’t create randomization. Unmeasured confounding still has to be argued away, for example by checking negative controls, doing sensitivity analyses, or comparing with existing trials. Blinding and placebo effects can’t be emulated either. What it guarantees is that the remaining bias comes from confounding, not from a broken design. It also forces you to state exactly which question you’re answering.</p>
+      <p>For more depth, Hernán and Robins’ 2016 paper in the <em>American Journal of Epidemiology</em> and their free book <em>Causal Inference: What If</em> are the standard references.</p>
+    </section>
+
+    <!-- ===================== PLAIN LANGUAGE ===================== -->
+    <section role="tabpanel" id="panel-plain" aria-labelledby="tab-plain" tabindex="0" hidden>
+
+      <p class="oneliner">Before you analyze medical records to answer “does this treatment work?”, write the full protocol of the clinical trial you <em>would</em> run. Then make the database analysis follow that protocol, as if you were running the trial inside the data.</p>
+
+      <h2>Why bother</h2>
+      <p>The gold standard is a randomized controlled trial. Often you can’t run one: it’s too expensive or slow, unethical, or the outcome takes 15 years to appear. So people turn to large databases such as health records, registries and cohort studies.</p>
+      <p>The obvious worry with those is confounding: treated people differ from untreated ones. That’s real, but it’s not the only problem. Many famous wrong answers came from something simpler. The analysis was set up in a way no real trial would ever allow.</p>
+
+      <h2>Example 1: Comparing the wrong people</h2>
+      <p>Suppose you want to know whether statins prevent dementia. A naive study takes a cohort of 70-year-olds and compares people <em>currently</em> on statins with people who aren’t.</p>
+      <p>The problem: someone who has been on statins for 10 years is a survivor. People who had bad side effects stopped. People who were sicker or less able to keep up with their care stopped. Some died. The ones still taking a daily pill a decade later tend to be healthier and more organized in general, which is known as the “healthy user” effect. They might get less dementia for reasons that have nothing to do with the drug.</p>
+      <p>A real trial would never do this. It enrolls people <em>at the moment they would start</em> the drug, randomizes them, and follows everyone from that day on, including those who quit. The emulated trial does the same: it includes only people <em>starting</em> statins, and compares them with similar people who weren’t starting at that same point.</p>
+      <div class="note">
+        <p>This one change has reversed or shrunk many “miracle” findings. Hormone replacement therapy is the classic case: database studies said it protected the heart, and the real trial showed it increased risk.</p>
+      </div>
+
+      <h2>Example 2: Getting credit for surviving</h2>
+      <p>Imagine patients diagnosed with a disease, some of whom get a drug a few months later. A naive study labels anyone who <em>ever</em> got the drug as “treated.”</p>
+      <p>To get the drug at month 6, you have to be alive at month 6. So the “treated” group is guaranteed to survive its first six months, while everyone who died early lands in the “untreated” group. This guaranteed-survival period is called “immortal time.”</p>
+
+      <div class="figure-slot"></div>
+
+      <p>A drug that does nothing at all can look like it saves lives. In a simple example with realistic death rates, an ineffective drug appears to cut mortality from about 30% to about 11%.</p>
+      <p>A real trial avoids this automatically, because people are assigned to groups on day one, before anything happens to them. The emulation forces the same rule: groups are defined only by what was known at the starting point. There are statistical techniques for handling a strategy like “start the drug sometime in the next 6 months,” but the principle is simple: you can’t use the future to decide which group someone was in.</p>
+
+      <h2>How it works in practice</h2>
+      <p>It looks like a protocol any clinical researcher would recognize, written down before any analysis:</p>
+      <ul>
+        <li><strong>Who is eligible?</strong> For example, adults over 60, newly diagnosed, with no dementia at baseline.</li>
+        <li><strong>What strategies are compared?</strong> “Start statin now” vs. “don’t start.”</li>
+        <li><strong>When is day zero?</strong> The moment someone becomes eligible and the decision is made.</li>
+        <li><strong>What’s the outcome, and for how long?</strong> A dementia diagnosis within 10 years.</li>
+        <li><strong>What’s the analysis?</strong> Specified in advance, including which factors to adjust for, since there’s no randomization to balance the groups.</li>
+      </ul>
+      <p>Then each step is carried out using the database instead of recruited patients.</p>
+
+      <h2>What it can’t fix</h2>
+      <p>There’s no real randomization, so the statistician still has to adjust for differences between groups, and anything unmeasured can still mislead. There’s also no blinding or placebo. The method doesn’t make database studies as good as trials. It removes the <em>avoidable</em> mistakes and makes it clear exactly what question is being asked.</p>
+
+      <h2>“Isn’t this just good study design?”</h2>
+      <p>Yes, that’s the point. It’s a disciplined way of making sure an observational study has the same structure as a trial, so the only remaining weakness is the one everyone already knows about: no randomization.</p>
+    </section>
+
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">Based on the framework of Miguel Hernán and James Robins.</div>
+</footer>
+
+<template id="timeline-figure">
+  <figure>
+    <div class="canvas">
+      <svg viewBox="0 0 660 250" role="img" aria-labelledby="tl-title tl-desc">
+        <title id="tl-title">How immortal time arises</title>
+        <desc id="tl-desc">Patient A starts the drug at month 6 and survives; in the naive analysis, A’s first six months are counted as treated time even though A had to survive them to be labeled treated. Patient B dies at month 3 before starting and is counted as untreated.</desc>
+        <defs>
+          <pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <line x1="0" y1="0" x2="0" y2="8" class="hatchline"></line>
+          </pattern>
+        </defs>
+
+        <!-- Patient A -->
+        <text x="0" y="52" class="lbl">Patient A</text>
+        <rect x="100" y="36" width="270" height="22" rx="3" class="bar-warn"></rect>
+        <rect x="370" y="36" width="270" height="22" rx="3" class="bar-accent"></rect>
+        <line x1="370" y1="22" x2="370" y2="70" class="marker"></line>
+        <text x="376" y="22" class="small">starts drug</text>
+        <text x="100" y="82" class="small">Months 0–6: had to survive these to be labeled “treated”</text>
+        <text x="100" y="97" class="small">…but the naive analysis counts them as treated time</text>
+
+        <!-- Patient B -->
+        <text x="0" y="146" class="lbl">Patient B</text>
+        <rect x="100" y="130" width="135" height="22" rx="3" class="bar-gray"></rect>
+        <line x1="229" y1="126" x2="243" y2="140" class="death"></line>
+        <line x1="243" y1="126" x2="229" y2="140" class="death"></line>
+        <text x="252" y="146" class="small">dies at month 3 before starting → labeled “untreated”</text>
+
+        <!-- Axis -->
+        <line x1="100" y1="190" x2="640" y2="190" class="axis"></line>
+        <g class="tick">
+          <text x="100" y="210" text-anchor="middle">0</text>
+          <text x="235" y="210" text-anchor="middle">3</text>
+          <text x="370" y="210" text-anchor="middle">6</text>
+          <text x="505" y="210" text-anchor="middle">9</text>
+          <text x="640" y="210" text-anchor="end">12</text>
+        </g>
+        <text x="370" y="234" text-anchor="middle" class="small">Months since diagnosis (time zero)</text>
+      </svg>
+    </div>
+    <figcaption>The hatched stretch is the “immortal time.” Every death that happens there lands in the untreated group, so treatment looks protective even when it does nothing. In a properly emulated trial, Patient B would count as a death in both arms, because dying at month 3 is consistent with either strategy up to that point.</figcaption>
+  </figure>
+</template>
+
+<script>
+  (function () {
+    // Insert the shared timeline figure into each slot
+    var tpl = document.getElementById('timeline-figure');
+    document.querySelectorAll('.figure-slot').forEach(function (slot, i) {
+      var node = tpl.content.cloneNode(true);
+      // keep SVG ids unique per copy
+      node.querySelectorAll('[id]').forEach(function (el) {
+        var old = el.id, neu = old + '-' + i;
+        el.id = neu;
+        node.querySelectorAll('[aria-labelledby]').forEach(function (r) {
+          r.setAttribute('aria-labelledby', r.getAttribute('aria-labelledby').split(' ').map(function (t) { return t === old ? neu : t; }).join(' '));
+        });
+      });
+      node.querySelectorAll('.bar-warn').forEach(function (r) { r.style.fill = 'url(#hatch-' + i + ')'; });
+      slot.replaceWith(node);
+    });
+
+    var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"]'));
+    var views = tabs.map(function (t) { return t.dataset.view; });
+
+    function show(name) {
+      if (views.indexOf(name) === -1) name = views[0];
+      tabs.forEach(function (t) {
+        var on = t.dataset.view === name;
+        t.setAttribute('aria-selected', on ? 'true' : 'false');
+        t.tabIndex = on ? 0 : -1;
+        document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+      });
+    }
+
+    function go(name) {
+      if (location.hash.slice(1) !== name) {
+        location.hash = name;
+      } else {
+        show(name);
+      }
+      window.scrollTo({ top: 0 });
+    }
+
+    tabs.forEach(function (t, i) {
+      t.addEventListener('click', function () { go(t.dataset.view); });
+      t.addEventListener('keydown', function (e) {
+        var j = null;
+        if (e.key === 'ArrowRight') j = (i + 1) % tabs.length;
+        if (e.key === 'ArrowLeft') j = (i - 1 + tabs.length) % tabs.length;
+        if (j !== null) { e.preventDefault(); tabs[j].focus(); go(tabs[j].dataset.view); }
+      });
+    });
+
+    window.addEventListener('hashchange', function () { show(location.hash.slice(1)); });
+    show(location.hash.slice(1));
+  })();
+</script>
+</body>
+</html>
